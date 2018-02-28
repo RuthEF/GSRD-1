@@ -267,7 +267,7 @@ void proc1 (Scalar * const pR, const Scalar * const pI, const int i, const int j
 // _rab2= KR0 * a * b * b
 // a+= laplace9P(a, KLA0) - _rab2 + mKRA * (1 - a)
 // b+= laplace9P(b, KLB0) + _rab2 - mKDB * b
-void proc (Scalar * const pR, const Scalar * const pS, const ImgOrg * const pO, const ParamVal * const pP)
+void proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * restrict pO, const ParamVal * restrict pP)
 {
    const SV2 sv2={pO->stride[0],pO->stride[1]};
    Stride wrap[6]; // LRBT strides for boundary wrap
@@ -465,16 +465,20 @@ int main ( int argc, char* argv[] )
          GETTIME(&t1);
          for ( i= 0; i < iM; ++i )
          {
+            const Scalar * restrict pS= gCtx.hb.pAB[(k^0x1)];
+            Scalar * restrict pR= gCtx.hb.pAB[k];
+            const size_t n= gCtx.org.stride[2] * 2; // 2 planes
             k^= 0x1;
-            proc(gCtx.hb.pAB[k], gCtx.hb.pAB[(k^0x1)], &(gCtx.org), &(gCtx.pv));
+            #pragma acc data copy(pR[0:n],pS[0:n])
+            { proc(pR, pS, &(gCtx.org), &(gCtx.pv)); }
          }
          GETTIME(&t2);
          gCtx.i+= i;
          summarise(&bs, gCtx.hb.pAB[k], &(gCtx.org));
-         printf("\ttE= %G, %G\n", tE0, tE1);
          tE0= 1E-6 * USEC(t1,t2);
          tE1+= tE0;
-        saveBuff(gCtx.hb.pAB[k], gCtx.org.def, gCtx.i);
+         printf("\ttE= %G, %G\n", tE0, tE1);
+         saveBuff(gCtx.hb.pAB[k], gCtx.org.def, gCtx.i);
       } while (gCtx.i < pPI->maxIter);
       releaseCtx(&gCtx);
    }
