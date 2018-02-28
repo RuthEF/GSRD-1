@@ -279,120 +279,120 @@ size_t proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * re
    U16 x, y;
    const Index endX= pO->def.x-1;
    const Index endY= pO->def.y-1;
-int iter= 0;
+   size_t iter= 0;
+   
    // Process according to memory access pattern (boundary wrap)
    // Interior
    #pragma acc data copyin( pP->pKRR[0:pP->n], pP->pKRA[0:pP->n], pP->pKDB[0:pP->n], pS[0:pO->n] ) copyout( pR[0:pO->n] ) 
    {
       for ( iter= 0; iter < iterMax; ++iter )
       {
-
-   #pragma acc kernels loop present( pR[0:pO->n], pS[0:pO->n] ) independent
-   for ( y= 1; y < endY; ++y )
-   {
-      for ( x= 1; x < endX; ++x )
-      {
-         const Index i= y * pO->stride[1] + x * pO->stride[0];
-         const Index j= i + pO->stride[3];
-         const Scalar a= pS[i];
-         const Scalar b= pS[j];
-         const Scalar rab2= pP->pKRR[x] * a * b * b;
-         //const Scalar ar= KRA0 * (1 - a);
-         //const Scalar bd= KDB0 * b;
+         #pragma acc kernels loop present( pR[0:pO->n], pS[0:pO->n] ) independent
+         for ( y= 1; y < endY; ++y )
+         {
+            for ( x= 1; x < endX; ++x )
+            {
+               const Index i= y * pO->stride[1] + x * pO->stride[0];
+               const Index j= i + pO->stride[3];
+               const Scalar a= pS[i];
+               const Scalar b= pS[j];
+               const Scalar rab2= pP->pKRR[x] * a * b * b;
+               //const Scalar ar= KRA0 * (1 - a);
+               //const Scalar bd= KDB0 * b;
 #ifndef LAPLACE_FUNCTION
-         pR[i]= a + LAPLACE2D2S9P(pS, i, sv2, pP->kL.a) - rab2 + pP->pKRA[x] * (1 - a);
-         pR[j]= b + LAPLACE2D2S9P(pS, j, sv2, pP->kL.b) + rab2 - pP->pKDB[y] * b;
+               pR[i]= a + LAPLACE2D2S9P(pS, i, sv2, pP->kL.a) - rab2 + pP->pKRA[x] * (1 - a);
+               pR[j]= b + LAPLACE2D2S9P(pS, j, sv2, pP->kL.b) + rab2 - pP->pKDB[y] * b;
 #else
-         pR[i]= a + laplace2D2S9P(pS+i, pO->stride, pP->kL.a) - rab2 + pP->pKRA[x] * (1 - a);
-         pR[j]= b + laplace2D2S9P(pS+j, pO->stride, pP->kL.b) + rab2 - pP->pKDB[y] * b;
+               pR[i]= a + laplace2D2S9P(pS+i, pO->stride, pP->kL.a) - rab2 + pP->pKRA[x] * (1 - a);
+               pR[j]= b + laplace2D2S9P(pS+j, pO->stride, pP->kL.b) + rab2 - pP->pKDB[y] * b;
 #endif
-      }
-   }
+            }
+         }
 
-   // Boundaries
+         // Boundaries
 #if 1 // Non-corner Edges
-   // Share the two middle wrap strides between edges (order unimportant due to symmetric convolution kernel)
-   //wrap[0]= def.x; wrap[1]= def.x*(def.y-1);	// 0..3 LO, 2..5 HI
-   //wrap[2]= -1; wrap[3]= 1;
-   //wrap[4]= -def.x*(def.y-1); wrap[5]= -def.x;
+         // Share the two middle wrap strides between edges (order unimportant due to symmetric convolution kernel)
+         //wrap[0]= def.x; wrap[1]= def.x*(def.y-1);	// 0..3 LO, 2..5 HI
+         //wrap[2]= -1; wrap[3]= 1;
+         //wrap[4]= -def.x*(def.y-1); wrap[5]= -def.x;
 
-   wrap[0]= pO->stride[1]; wrap[1]= pO->stride[2] - pO->stride[1];	// 0..3 LO, 2..5 HI
-   wrap[2]= -pO->stride[0]; wrap[3]= pO->stride[0];
-   wrap[4]= pO->stride[1] - pO->stride[2]; wrap[5]= -pO->stride[1];
+         wrap[0]= pO->stride[1]; wrap[1]= pO->stride[2] - pO->stride[1];	// 0..3 LO, 2..5 HI
+         wrap[2]= -pO->stride[0]; wrap[3]= pO->stride[0];
+         wrap[4]= pO->stride[1] - pO->stride[2]; wrap[5]= -pO->stride[1];
 
-   // Horizontal top & bottom
-   for ( x= 1; x < (pO->def.x-1); ++x )
-   {
-      const Index i1= x * pO->stride[0];
-      const Index j1= i1 + pO->stride[3];
-      const Scalar a1= pS[i1];
-      const Scalar b1= pS[j1];
-      Scalar rab2= pP->pKRR[x] * a1 * b1 * b1;
-      //const Scalar ar1= KRA0 * (1 - a1);
-      //const Scalar bd1= KDB0 * b1;
-      pR[i1]= a1 + laplace2D4S9P(pS+i1, wrap+0, pP->kL.a) - rab2 + pP->pKRA[x] * (1 - a1);
-      pR[j1]= b1 + laplace2D4S9P(pS+j1, wrap+0, pP->kL.b) + rab2 - pP->pKDB[0] * b1;
+         // Horizontal top & bottom
+         for ( x= 1; x < (pO->def.x-1); ++x )
+         {
+            const Index i1= x * pO->stride[0];
+            const Index j1= i1 + pO->stride[3];
+            const Scalar a1= pS[i1];
+            const Scalar b1= pS[j1];
+            Scalar rab2= pP->pKRR[x] * a1 * b1 * b1;
+            //const Scalar ar1= KRA0 * (1 - a1);
+            //const Scalar bd1= KDB0 * b1;
+            pR[i1]= a1 + laplace2D4S9P(pS+i1, wrap+0, pP->kL.a) - rab2 + pP->pKRA[x] * (1 - a1);
+            pR[j1]= b1 + laplace2D4S9P(pS+j1, wrap+0, pP->kL.b) + rab2 - pP->pKDB[0] * b1;
 
-      const Stride offsY= pO->stride[2] - pO->stride[1];
-      const Index i2= i1 + offsY;
-      const Index j2= j1 + offsY;
-      const Scalar a2= pS[i2];
-      const Scalar b2= pS[j2];
-      rab2= pP->pKRR[x] * a2 * b2 * b2;
-      pR[i2]= a2 + laplace2D4S9P(pS+i2, wrap+2, pP->kL.a) - rab2 + pP->pKRA[x] * (1 - a2);
-      pR[j2]= b2 + laplace2D4S9P(pS+j2, wrap+2, pP->kL.b) + rab2 - pP->pKDB[endY] * b2;
-   }
+            const Stride offsY= pO->stride[2] - pO->stride[1];
+            const Index i2= i1 + offsY;
+            const Index j2= j1 + offsY;
+            const Scalar a2= pS[i2];
+            const Scalar b2= pS[j2];
+            rab2= pP->pKRR[x] * a2 * b2 * b2;
+            pR[i2]= a2 + laplace2D4S9P(pS+i2, wrap+2, pP->kL.a) - rab2 + pP->pKRA[x] * (1 - a2);
+            pR[j2]= b2 + laplace2D4S9P(pS+j2, wrap+2, pP->kL.b) + rab2 - pP->pKDB[endY] * b2;
+         }
 #endif
 #if 1
-   // Vertical edges (non-corner)
-   //wrap[0]= def.x-1; wrap[1]= 1;
-   //wrap[2]= def.x; wrap[3]= -def.x;
-   //wrap[4]= -1; wrap[5]= 1-def.x;
+         // Vertical edges (non-corner)
+         //wrap[0]= def.x-1; wrap[1]= 1;
+         //wrap[2]= def.x; wrap[3]= -def.x;
+         //wrap[4]= -1; wrap[5]= 1-def.x;
 
-   wrap[0]= pO->stride[1] - pO->stride[0]; wrap[1]= pO->stride[0];
-   wrap[2]= pO->stride[1]; wrap[3]= -pO->stride[1];
-   wrap[4]= -pO->stride[0]; wrap[5]= pO->stride[0] - pO->stride[1];
+         wrap[0]= pO->stride[1] - pO->stride[0]; wrap[1]= pO->stride[0];
+         wrap[2]= pO->stride[1]; wrap[3]= -pO->stride[1];
+         wrap[4]= -pO->stride[0]; wrap[5]= pO->stride[0] - pO->stride[1];
 
-   // left & right
-   for ( y= 1; y < (pO->def.y-1); ++y )
-   {
-      Scalar a, b, rab2;
-      const Index i1= y * pO->stride[1];
-      const Index j1= i1 + pO->stride[3];
-      a= pS[i1];
-      b= pS[j1];
-      rab2= pP->pKRR[0] * a * b * b;
-      pR[i1]= a + laplace2D4S9P(pS+i1, wrap+0, pP->kL.a) - rab2 + pP->pKRA[0] * (1 - a);
-      pR[j1]= b + laplace2D4S9P(pS+j1, wrap+0, pP->kL.b) + rab2 - pP->pKDB[y] * b;
+         // left & right
+         for ( y= 1; y < (pO->def.y-1); ++y )
+         {
+            Scalar a, b, rab2;
+            const Index i1= y * pO->stride[1];
+            const Index j1= i1 + pO->stride[3];
+            a= pS[i1];
+            b= pS[j1];
+            rab2= pP->pKRR[0] * a * b * b;
+            pR[i1]= a + laplace2D4S9P(pS+i1, wrap+0, pP->kL.a) - rab2 + pP->pKRA[0] * (1 - a);
+            pR[j1]= b + laplace2D4S9P(pS+j1, wrap+0, pP->kL.b) + rab2 - pP->pKDB[y] * b;
 
-      const Index offsX= pO->stride[1] - pO->stride[0];
-      const Index i2= i1 + offsX;
-      const Index j2= j1 + offsX;
-      a= pS[i2];
-      b= pS[j2];
-      rab2= pP->pKRR[endX] * a * b * b;
-      pR[i2]= a + laplace2D4S9P(pS+i2, wrap+2, pP->kL.a) - rab2 + pP->pKRA[endX] * (1 - a);
-      pR[j2]= b + laplace2D4S9P(pS+j2, wrap+2, pP->kL.b) + rab2 - pP->pKDB[y] * b;
-   }
+            const Index offsX= pO->stride[1] - pO->stride[0];
+            const Index i2= i1 + offsX;
+            const Index j2= j1 + offsX;
+            a= pS[i2];
+            b= pS[j2];
+            rab2= pP->pKRR[endX] * a * b * b;
+            pR[i2]= a + laplace2D4S9P(pS+i2, wrap+2, pP->kL.a) - rab2 + pP->pKRA[endX] * (1 - a);
+            pR[j2]= b + laplace2D4S9P(pS+j2, wrap+2, pP->kL.b) + rab2 - pP->pKDB[y] * b;
+         }
 #endif
 #if 1	// The four corners: R,L * B,T
-   //wrap[0]= def.x-1; wrap[1]= 1;
-   //wrap[2]= def.x; wrap[3]= def.x*(def.y-1);
-   //wrap[4]= -1; wrap[5]= 1-def.x;
+         //wrap[0]= def.x-1; wrap[1]= 1;
+         //wrap[2]= def.x; wrap[3]= def.x*(def.y-1);
+         //wrap[4]= -1; wrap[5]= 1-def.x;
 
-   wrap[0]= pO->stride[1] - pO->stride[0]; wrap[1]= pO->stride[0];
-   wrap[2]= pO->stride[1]; wrap[3]= pO->stride[2] - pO->stride[1];
-   wrap[4]= -pO->stride[0]; wrap[5]= pO->stride[0] - pO->stride[1];
+         wrap[0]= pO->stride[1] - pO->stride[0]; wrap[1]= pO->stride[0];
+         wrap[2]= pO->stride[1]; wrap[3]= pO->stride[2] - pO->stride[1];
+         wrap[4]= -pO->stride[0]; wrap[5]= pO->stride[0] - pO->stride[1];
 
-   proc1(pR, pS, 0, pO->stride[3], wrap+0, pP);
-   proc1(pR, pS, pO->stride[1]-pO->stride[0], pO->stride[3], wrap+2, pP);
+         proc1(pR, pS, 0, pO->stride[3], wrap+0, pP);
+         proc1(pR, pS, pO->stride[1]-pO->stride[0], pO->stride[3], wrap+2, pP);
 
-   //wrap[0]= def.x-1; wrap[1]= 1; 
-   //wrap[2]= -def.x*(def.y-1); wrap[3]= -def.x;
-   wrap[2]= -wrap[2]; wrap[3]= -wrap[3];
+         //wrap[0]= def.x-1; wrap[1]= 1; 
+         //wrap[2]= -def.x*(def.y-1); wrap[3]= -def.x;
+         wrap[2]= -wrap[2]; wrap[3]= -wrap[3];
 
-   proc1(pR, pS, pO->stride[2]-pO->stride[1], pO->stride[3], wrap+0, pP);
-   proc1(pR, pS, pO->stride[2]-pO->stride[0], pO->stride[3], wrap+2, pP);
+         proc1(pR, pS, pO->stride[2]-pO->stride[1], pO->stride[3], wrap+0, pP);
+         proc1(pR, pS, pO->stride[2]-pO->stride[0], pO->stride[3], wrap+2, pP);
 #endif
          { Scalar *pT= pS; pS= pR; pR= pT; } // SWAP()
       } // for iter < iterMax
