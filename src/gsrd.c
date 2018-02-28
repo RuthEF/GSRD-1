@@ -58,7 +58,8 @@ typedef struct
 {
    KLAB   kL;
    Scalar kRR, kRA, kDB;
-   Scalar *pKRR, *pKRA, *pKDB;
+   const Scalar * restrict pKRR, * restrict pKRA, * restrict pKDB;
+   size_t n;
 } ParamVal;
 
 typedef struct
@@ -70,6 +71,7 @@ typedef struct
 {
    V2U16  def;
    Stride stride[4];
+   size_t n;
 } ImgOrg;
 
 typedef struct
@@ -113,6 +115,7 @@ void initOrg (ImgOrg * const pO, U16 w, U16 h, U8 flags)
       }
       pO->stride[1]= w * pO->stride[0]; // line
       pO->stride[2]= h * pO->stride[1]; // plane
+      pO->n= 2 * pO->stride[2]; // complete buffer
    }
 } // initOrg
 
@@ -121,6 +124,7 @@ size_t paramBytes (U16 w, U16 h) { return(MAX(w,h) * 3 * sizeof(Scalar)); }
 size_t initParam (ParamVal * const pP, void *p, U16 w, U16 h, Scalar varR, Scalar varD) // ParamArgs *
 {
    U16 i, n;
+
    // Set diffusion weights
    for ( i= 0; i<3; ++i ) { pP->kL.a[i]= gKL[i] * KLA0; pP->kL.b[i]= gKL[i] * KLB0; }
    pP->kRR= KR0;
@@ -131,18 +135,19 @@ size_t initParam (ParamVal * const pP, void *p, U16 w, U16 h, Scalar varR, Scala
    {
       Scalar kRR=KR0, kRA=KRA0, kDB=KDB0;
       Scalar dKRR=0, dKRA=0, dKDB=0;
-      n= MAX(w, h);
+      Scalar *pA= p;
+      pP->n= n= MAX(w, h);
       dKRR= (kRR * varR) / n;
       dKDB= (kDB * varD) / n;
-      pP->pKRA= pP->pKRR + n;
-      pP->pKDB= pP->pKRA + n;
+      pP->pKRA+= n;
+      pP->pKDB+= 2*n;
       for (i= 0; i<n; ++i)
       {
-         pP->pKRR[i]= kRR; kRR+= dKRR;
-         pP->pKRA[i]= kRA; kRA+= dKRA;
-         pP->pKDB[i]= kDB; kDB+= dKDB;
+         pA[i]= kRR; kRR+= dKRR;
+         pA[n+i]= kRA; kRA+= dKRA;
+         pA[2*n+i]= kDB; kDB+= dKDB;
       }
-      return(3*n);
+      return(3*pP->n);
    }
    return(0);
 } // initParam
@@ -161,7 +166,7 @@ Context *initCtx (Context * const pC, U16 w, U16 h, U16 nF)
       {
          pC->buff.p= p;
          pC->buff.bytes= b;
-         
+
          pC->hb.pAB[0]= p;
          pC->hb.pAB[0]+= initParam(&(pC->pv), p, w, h, 0.100, 0.005);
          if (nF >= 5) { pC->hb.pC= pC->hb.pAB[0]; pC->hb.pAB[0]+= n; } else { pC->hb.pC= NULL; }
@@ -214,7 +219,7 @@ void saveBuff (const Scalar * const pB, const V2U16 d, const U32 i)
    FILE *hF;
    char name[64];
    const size_t n= d.x * d.y * 2;
-   
+
    if (n > 0)
    {
       snprintf(name, sizeof(name)-1, "raw/gsrd%05d(%d,%d,2)F64.raw", i, d.x, d.y);
@@ -243,7 +248,7 @@ inline Scalar laplace2D2S9P (const Scalar * const pS, const Stride s[2], const S
 } // laplace2D2S9P
 
 // Stride 0..3 -> +-X +-Y
-Scalar laplace2D4S9P (const Scalar * const pS, const Stride s[4], const Scalar k[3])
+inline Scalar laplace2D4S9P (const Scalar * const pS, const Stride s[4], const Scalar k[3])
 {
    return( pS[0] * k[0] + 
            (pS[ s[0] ] + pS[ s[1] ] + pS[ s[2] ] + pS[ s[3] ]) * k[1] + 
@@ -277,7 +282,9 @@ void proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * rest
 
    // Process according to memory access pattern (boundary wrap)
    // Interior
-   #pragma acc kernels loop
+   #pragma acc data copyin( pP->pKRR[0:pP->n], pP->pKRA[0:pP->n],pP->pKDB[0:pP->n] )
+   //pragma acc data copyout( pR[0:pO->n] ) copyin( pS[0:pO->n] )
+   #pragma acc kernels loop present( pR[0:pO->n], pS[0:pO->n] ) independent
    for ( y= 1; y < endY; ++y )
    {
       for ( x= 1; x < endX; ++x )
@@ -298,7 +305,7 @@ void proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * rest
 #endif
       }
    }
-   
+
    // Boundaries
 #if 1 // Non-corner Edges
    // Share the two middle wrap strides between edges (order unimportant due to symmetric convolution kernel)
@@ -322,7 +329,7 @@ void proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * rest
       //const Scalar bd1= KDB0 * b1;
       pR[i1]= a1 + laplace2D4S9P(pS+i1, wrap+0, pP->kL.a) - rab2 + pP->pKRA[x] * (1 - a1);
       pR[j1]= b1 + laplace2D4S9P(pS+j1, wrap+0, pP->kL.b) + rab2 - pP->pKDB[0] * b1;
-      
+
       const Stride offsY= pO->stride[2] - pO->stride[1];
       const Index i2= i1 + offsY;
       const Index j2= j1 + offsY;
@@ -354,7 +361,7 @@ void proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * rest
       rab2= pP->pKRR[0] * a * b * b;
       pR[i1]= a + laplace2D4S9P(pS+i1, wrap+0, pP->kL.a) - rab2 + pP->pKRA[0] * (1 - a);
       pR[j1]= b + laplace2D4S9P(pS+j1, wrap+0, pP->kL.b) + rab2 - pP->pKDB[y] * b;
-      
+
       const Index offsX= pO->stride[1] - pO->stride[0];
       const Index i2= i1 + offsX;
       const Index j2= j1 + offsX;
@@ -376,7 +383,7 @@ void proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * rest
 
    proc1(pR, pS, 0, pO->stride[3], wrap+0, pP);
    proc1(pR, pS, pO->stride[1]-pO->stride[0], pO->stride[3], wrap+2, pP);
-   
+
    //wrap[0]= def.x-1; wrap[1]= 1; 
    //wrap[2]= -def.x*(def.y-1); wrap[3]= -def.x;
    wrap[2]= -wrap[2]; wrap[3]= -wrap[3];
@@ -419,7 +426,7 @@ int main ( int argc, char* argv[] )
 {
    int n= 0, i= 0, nErr= 0;
    ArgInfo ai={0,};
-   
+
    if (argc > 1)
    {
       n= scanArgs(&ai, argv+1, argc-1);
@@ -446,7 +453,7 @@ int main ( int argc, char* argv[] )
       timestruct t1, t2;
       Scalar tE0=0, tE1=0;
       BlockStat bs={0};
-      
+
       if (0 == loadBuff(gCtx.hb.pAB[0], pDFI->path, pDFI->bytes))
          //printf("nB=%zu\n",
       {
@@ -458,18 +465,17 @@ int main ( int argc, char* argv[] )
       do
       {
          int k= gCtx.i & 0x1;
-      
+
          iR= pPI->maxIter - gCtx.i;
          if (iM > iR) { iM= iR; }
 
          GETTIME(&t1);
          for ( i= 0; i < iM; ++i )
          {
-            const Scalar * restrict pS= gCtx.hb.pAB[(k^0x1)];
-            Scalar * restrict pR= gCtx.hb.pAB[k];
-            const size_t n= gCtx.org.stride[2] * 2; // 2 planes
+            const Scalar * restrict pS= gCtx.hb.pAB[k];
+            Scalar * restrict pR= gCtx.hb.pAB[(k^0x1)];
             k^= 0x1;
-            #pragma acc data copy(pR[0:n],pS[0:n])
+            #pragma acc data copyout(pR[0:gCtx.org.n]) copyin(pS[0:gCtx.org.n])
             { proc(pR, pS, &(gCtx.org), &(gCtx.pv)); }
          }
          GETTIME(&t2);

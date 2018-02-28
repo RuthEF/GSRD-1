@@ -127,7 +127,7 @@ int scanArgs (ArgInfo *pAI, const char *a[], int nA)
          n+= scanDFI(&(pAI->dfi), pCh);
       }
    }
-   if (0 == pAI->proc.maxIter) { pAI->proc.maxIter= 10000; }
+   if (0 == pAI->proc.maxIter) { pAI->proc.maxIter= 5000; }
    if (0 == pAI->proc.subIter) { pAI->proc.subIter= 1000; }
    return(n);
 } // scanArgs
