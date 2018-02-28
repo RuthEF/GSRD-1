@@ -272,18 +272,21 @@ void proc1 (Scalar * const pR, const Scalar * const pI, const int i, const int j
 // _rab2= KR0 * a * b * b
 // a+= laplace9P(a, KLA0) - _rab2 + mKRA * (1 - a)
 // b+= laplace9P(b, KLB0) + _rab2 - mKDB * b
-void proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * restrict pO, const ParamVal * restrict pP)
+size_t proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * restrict pO, const ParamVal * restrict pP, const size_t iterMax)
 {
    const SV2 sv2={pO->stride[0],pO->stride[1]};
    Stride wrap[6]; // LRBT strides for boundary wrap
    U16 x, y;
    const Index endX= pO->def.x-1;
    const Index endY= pO->def.y-1;
-
+int iter= 0;
    // Process according to memory access pattern (boundary wrap)
    // Interior
-   #pragma acc data copyin( pP->pKRR[0:pP->n], pP->pKRA[0:pP->n],pP->pKDB[0:pP->n] )
-   //pragma acc data copyout( pR[0:pO->n] ) copyin( pS[0:pO->n] )
+   #pragma acc data copyin( pP->pKRR[0:pP->n], pP->pKRA[0:pP->n], pP->pKDB[0:pP->n], pS[0:pO->n] ) copyout( pR[0:pO->n] ) 
+   {
+      for ( iter= 0; iter < iterMax; ++iter )
+      {
+
    #pragma acc kernels loop present( pR[0:pO->n], pS[0:pO->n] ) independent
    for ( y= 1; y < endY; ++y )
    {
@@ -391,6 +394,10 @@ void proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * rest
    proc1(pR, pS, pO->stride[2]-pO->stride[1], pO->stride[3], wrap+0, pP);
    proc1(pR, pS, pO->stride[2]-pO->stride[0], pO->stride[3], wrap+2, pP);
 #endif
+         { Scalar *pT= pS; pS= pR; pR= pT; } // SWAP()
+      } // for iter < iterMax
+   } // acc copy ...
+   return(iter);
 } // proc
 
 void summarise (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * const pO)
@@ -470,13 +477,11 @@ int main ( int argc, char* argv[] )
          if (iM > iR) { iM= iR; }
 
          GETTIME(&t1);
-         for ( i= 0; i < iM; ++i )
+         //for ( i= 0; i < iM; ++i )
          {
             const Scalar * restrict pS= gCtx.hb.pAB[k];
             Scalar * restrict pR= gCtx.hb.pAB[(k^0x1)];
-            k^= 0x1;
-            #pragma acc data copyout(pR[0:gCtx.org.n]) copyin(pS[0:gCtx.org.n])
-            { proc(pR, pS, &(gCtx.org), &(gCtx.pv)); }
+            i= proc(pR, pS, &(gCtx.org), &(gCtx.pv), iM);
          }
          GETTIME(&t2);
          gCtx.i+= i;
