@@ -394,7 +394,7 @@ size_t proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * re
          proc1(pR, pS, pO->stride[2]-pO->stride[1], pO->stride[3], wrap+0, pP);
          proc1(pR, pS, pO->stride[2]-pO->stride[0], pO->stride[3], wrap+2, pP);
 #endif
-         { Scalar *pT= pS; pS= pR; pR= pT; } // SWAP()
+         if (iter < iterMax) { Scalar *pT= pS; pS= pR; pR= pT; } // SWAP()
       } // for iter < iterMax
    } // acc copy ...
    return(iter);
@@ -477,14 +477,10 @@ int main ( int argc, char* argv[] )
          if (iM > iR) { iM= iR; }
 
          GETTIME(&t1);
-         //for ( i= 0; i < iM; ++i )
-         {
-            const Scalar * restrict pS= gCtx.hb.pAB[k];
-            Scalar * restrict pR= gCtx.hb.pAB[(k^0x1)];
-            i= proc(pR, pS, &(gCtx.org), &(gCtx.pv), iM);
-         }
+         gCtx.i+= proc(gCtx.hb.pAB[(k^0x1)], gCtx.hb.pAB[k], &(gCtx.org), &(gCtx.pv), iM);
          GETTIME(&t2);
-         gCtx.i+= i;
+         
+         k= gCtx.i & 0x1;
          summarise(&bs, gCtx.hb.pAB[k], &(gCtx.org));
          tE0= 1E-6 * USEC(t1,t2);
          tE1+= tE0;
