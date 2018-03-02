@@ -37,21 +37,20 @@ inline void proc1 (Scalar * const pR, const Scalar * const pI, const int i, cons
 } // proc1
 
 /***/
-
-void bindData (const ParamVal * const pP, const ImgOrg * const pO)
+/*
+void bindData (const ParamVal * const pP, const ImgOrg * const pO, const U32 iS)
 {
-   U32 iS= pC->i & 1;
    U32 iR = iS ^ 1;
    Scalar * pS= pC->hb.pAB[iS];
    Scalar * pR= pC->hb.pAB[iR];
-   #pragma acc data copyin( pC->org, pC->pv )
+   #pragma acc data copyin( pP[0:1], pO[0:1] )
    #pragma acc data copyin( pP->pKRR[0:pP->n], pP->pKRA[0:pP->n], pP->pKDB[0:pP->n] )
    #pragma acc data copyin( pS[0:pO->n] )
    #pragma acc data create( pR[0:pO->n] )
    ;
    return;
 } // bindData
-
+*/
 // _rab2= KR0 * a * b * b
 // a+= laplace9P(a, KLA0) - _rab2 + mKRA * (1 - a)
 // b+= laplace9P(b, KLB0) + _rab2 - mKDB * b

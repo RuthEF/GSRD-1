@@ -124,21 +124,6 @@ inline void proc1 (Scalar * const pR, const Scalar * const pI, const int i, cons
 #endif
 } // proc1
 
-void bindCtx (const Context * pC)
-{
-   const ParamVal *pP= &(pC->pv);
-   const ImgOrg   *pO= &(pC->org);
-   U32 iS= pC->i & 1;
-   U32 iR = iS ^ 1;
-   Scalar * pS= pC->hb.pAB[iS];
-   Scalar * pR= pC->hb.pAB[iR];
-   #pragma acc data copyin( pC->org, pC->pv )
-   #pragma acc data copyin( pP->pKRR[0:pP->n], pP->pKRA[0:pP->n], pP->pKDB[0:pP->n] )
-   #pragma acc data copyin( pS[0:pO->n] )
-   #pragma acc data create( pR[0:pO->n] )
-   ;
-   return;
-} // bindCtx
 
 // _rab2= KR0 * a * b * b
 // a+= laplace9P(a, KLA0) - _rab2 + mKRA * (1 - a)
@@ -271,6 +256,22 @@ U32 proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, c
    return(iter);
 } // proc
 */
+void bindCtx (const Context * pC)
+{
+   const ParamVal *pP= &(pC->pv);
+   const ImgOrg   *pO= &(pC->org);
+   U32 iS= pC->i & 1;
+   U32 iR = iS ^ 1;
+   Scalar * pS= pC->hb.pAB[iS];
+   Scalar * pR= pC->hb.pAB[iR];
+   #pragma acc data copyin( pC->org, pC->pv )
+   #pragma acc data copyin( pP->pKRR[0:pP->n], pP->pKRA[0:pP->n], pP->pKDB[0:pP->n] )
+   #pragma acc data copyin( pS[0:pO->n] )
+   #pragma acc data create( pR[0:pO->n] )
+   ;
+   return;
+} // bindCtx
+
 void summarise (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * const pO)
 {  // HACKY ignores interleaving/padding
    const size_t n= pO->def.x * pO->def.y;
