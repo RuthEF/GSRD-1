@@ -14,15 +14,7 @@ typedef struct _timeb timestruct;
 #define USEC(t1,t2) (((t2).tv_sec-(t1).tv_sec)*1000000+((t2).tv_usec-(t1).tv_usec))
 typedef struct timeval timestruct;
 #endif
-/*
-KR0=   0.125            # Reaction
-KRA0=  0.0115           # Replenishment A
-DKRA0= KRA0 / 4.0       # Var rep A
-KDB0=  0.0195           # Decay B
-DKDB0= KDB0 / 4.0       # Var dec B
-KLA0=  0.25             # Diffusion A
-KLB0=  0.025            # Diffusion B
-*/
+
 #define KR0  (Scalar)0.125
 #define KRA0 (Scalar)0.0115
 #define KDB0 (Scalar)0.0195
@@ -250,12 +242,12 @@ inline Scalar laplace2D2S9P (const Scalar * const pS, const Stride s[2], const S
 // Stride 0..3 -> +-X +-Y
 inline Scalar laplace2D4S9P (const Scalar * const pS, const Stride s[4], const Scalar k[3])
 {
-   return( pS[0] * k[0] + 
+   return( pS[0] * k[0] +
            (pS[ s[0] ] + pS[ s[1] ] + pS[ s[2] ] + pS[ s[3] ]) * k[1] + 
            (pS[ s[0]+s[2] ] + pS[ s[0]+s[3] ] + pS[ s[1]+s[2] ] + pS[ s[1]+s[3] ]) * k[2] ); 
 } // laplace2D4S9P
 
-void proc1 (Scalar * const pR, const Scalar * const pI, const int i, const int j, const Stride wrap[4], const ParamVal * const pP)
+inline void proc1 (Scalar * const pR, const Scalar * const pI, const int i, const int j, const Stride wrap[4], const ParamVal * const pP)
 {
    const Scalar * const pA= pI+i, a= *pA;
    const Scalar * const pB= pI+i+j, b= *pB;
@@ -277,38 +269,31 @@ void bindCtx (const Context * pC)
    U32 iR = iS ^ 1;
    Scalar * pS= pC->hb.pAB[iS];
    Scalar * pR= pC->hb.pAB[iR];
-   //#pragma acc data copyin( pO[0:1], pP[0:1], pP->pKRR[0:pP->n], pP->pKRA[0:pP->n], pP->pKDB[0:pP->n] )
-   //pragma acc data copyin( &(pC->org)[0:1], &(pC->pv)[0:1] )
    #pragma acc data copyin( pC->org, pC->pv )
    #pragma acc data copyin( pP->pKRR[0:pP->n], pP->pKRA[0:pP->n], pP->pKDB[0:pP->n] )
    #pragma acc data copyin( pS[0:pO->n] )
    #pragma acc data create( pR[0:pO->n] )
    ;
    return;
-} // bindParam
+} // bindCtx
 
 // _rab2= KR0 * a * b * b
 // a+= laplace9P(a, KLA0) - _rab2 + mKRA * (1 - a)
 // b+= laplace9P(b, KLB0) + _rab2 - mKDB * b
-U32 proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * restrict pO, const ParamVal * restrict pP, const U32 iterMax)
+U32 proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP, const U32 iterMax)
 {
    const SV2 sv2={pO->stride[0],pO->stride[1]};
    Stride wrap[6]; // LRBT strides for boundary wrap
    const V2U32 end= {pO->def.x-1, pO->def.y-1};
    U32 x, y, iter= 0;
 
-   //pragma acc data copyin( pP->pKRR[0:pP->n], pP->pKRA[0:pP->n], pP->pKDB[0:pP->n]
-   #pragma acc data present( pP, pO, pS, pR )
-   //pragma acc data copyin( pS[0:pO->n] ) create( pR[0:pO->n] )
-   #pragma acc data copyout( pR[0:pO->n] )
-   {
+      #pragma acc data present( pP, pO, pS[0:pO->n], pR[0:pO->n]  )
+      #pragma acc data copyout( pR[0:pO->n] )
       for ( iter= 0; iter < iterMax; ++iter )
       {
 	 // Process according to memory access pattern (boundary wrap)
 	 // First the interior
-// present( pS[0:pO->n] ) independent
-// present( pR[0:pO->n] ) independent
-// present( pR[0:pO->n] ) private( pR )
+	 // private( pR[0:pO->n] )
          #pragma acc kernels loop
          for ( y= 1; y < end.y; ++y )
          {
@@ -343,6 +328,7 @@ U32 proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * restr
          wrap[4]= pO->stride[1] - pO->stride[2]; wrap[5]= -pO->stride[1];
 
          // Horizontal top & bottom
+         #pragma acc kernels loop
          for ( x= 1; x < end.x; ++x )
          {
             const Index i1= x * pO->stride[0];
@@ -376,6 +362,7 @@ U32 proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * restr
          wrap[4]= -pO->stride[0]; wrap[5]= pO->stride[0] - pO->stride[1];
 
          // left & right
+         #pragma acc kernels loop
          for ( y= 1; y < end.y; ++y )
          {
             Scalar a, b, rab2;
@@ -418,7 +405,6 @@ U32 proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * restr
 #endif
          if (iter < iterMax) { Scalar *pT= (Scalar*)pS; pS= pR; pR= pT; } // SWAP()
       } // for iter < iterMax
-   } // acc copy ...
    return(iter);
 } // proc
 
