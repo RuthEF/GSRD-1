@@ -29,12 +29,12 @@ void initOrg (ImgOrg * const pO, U16 w, U16 h, U8 flags)
 
 size_t paramBytes (U16 w, U16 h) { return(MAX(w,h) * 3 * sizeof(Scalar)); }
 
-size_t initParam (ParamVal * const pP, void *p, U16 w, U16 h, Scalar varR, Scalar varD) // ParamArgs *
+size_t initParam (ParamVal * const pP, void *p, const Scalar kL[3], const V2U32 *pD, Scalar varR, Scalar varD) // ParamArgs *
 {
    U16 i, n;
    
    // Set diffusion weights
-   for ( i= 0; i<3; ++i ) { pP->kL.a[i]= gKL[i] * KLA0; pP->kL.b[i]= gKL[i] * KLB0; }
+   for ( i= 0; i<3; ++i ) { pP->kL.a[i]= kL[i] * KLA0; pP->kL.b[i]= kL[i] * KLB0; }
    pP->kRR= KR0;
    pP->kRA= KRA0;
    pP->kDB= KDB0;
@@ -44,7 +44,7 @@ size_t initParam (ParamVal * const pP, void *p, U16 w, U16 h, Scalar varR, Scala
       Scalar kRR=KR0, kRA=KRA0, kDB=KDB0;
       Scalar dKRR=0, dKRA=0, dKDB=0;
       Scalar *pA= p;
-      pP->n= n= MAX(w, h);
+      pP->n= n= MAX(pD->x, pD->y);
       dKRR= (kRR * varR) / n;
       dKDB= (kDB * varD) / n;
       pP->pKRA+= n;

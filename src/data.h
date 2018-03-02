@@ -52,6 +52,6 @@ extern void initOrg (ImgOrg * const pO, U16 w, U16 h, U8 flags);
 
 extern size_t paramBytes (U16 w, U16 h);
 
-extern size_t initParam (ParamVal * const pP, void *p, U16 w, U16 h, Scalar varR, Scalar varD); // ParamArgs *
+extern size_t initParam (ParamVal * const pP, void *p, const Scalar kl[3], const V2U32 * const pD, Scalar varR, Scalar varD); // ParamArgs *
 
 #endif // DATA_H

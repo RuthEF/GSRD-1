@@ -59,11 +59,11 @@ Context *initCtx (Context * const pC, U16 w, U16 h, U16 nF)
          pC->buff.p= p;
          pC->buff.bytes= b;
 
+         initOrg(&(pC->org), w, h, 0);
          pC->hb.pAB[0]= p;
-         pC->hb.pAB[0]+= initParam(&(pC->pv), p, w, h, 0.100, 0.005);
+         pC->hb.pAB[0]+= initParam(&(pC->pv), p, gKL, &(pC->org.def), 0.100, 0.005);
          if (nF >= 5) { pC->hb.pC= pC->hb.pAB[0]; pC->hb.pAB[0]+= n; } else { pC->hb.pC= NULL; }
          pC->hb.pAB[1]= pC->hb.pAB[0] + 2 * n;
-         initOrg(&(pC->org), w, h, 0);
          pC->i= 0;
          return(pC);
       }
@@ -94,19 +94,21 @@ size_t initBuff (const HostBuff *pB, const V2U32 d, const U16 step)
    return(nB);
 } // initBuff
 
-void saveFrame (const Scalar * const pB, const V2U32 d, const U32 i)
+size_t saveFrame (const Scalar * const pB, const V2U32 d, const U32 i)
 {
    char name[64];
    const size_t n= d.x * d.y * 2;
-
+   size_t r= 0;
    if (n > 0)
    {
       snprintf(name, sizeof(name)-1, "raw/gsrd%05lu(%lu,%lu,2)F64.raw", i, d.x, d.y);
-      if (saveBuff(pB, sizeof(Scalar) * n, name))
+      r= saveBuff(pB, name, sizeof(Scalar) * n);
+      if (r > 0)
       {
          printf("saveFrame() - %s %p %zu bytes\n", name, pB, r);
       }
    }
+   return(r);
 } // saveFrame
 
 
