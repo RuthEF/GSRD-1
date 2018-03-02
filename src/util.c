@@ -137,7 +137,7 @@ int scanDFI (DataFileInfo * pDFI, const char * const path)
    return(0);
 } // scanDFI
 
-int scanArgs (ArgInfo *pAI, const char *a[], int nA)
+int scanArgs (ArgInfo *pAI, const char * const a[], int nA)
 {
    const char *pCh;
    ArgInfo tmpAI;

@@ -32,7 +32,7 @@ all: build run verify
 
 SRC_DIR=src
 
-SL= gsrd.c data.c util.c
+SL= gsrd.c proc.c data.c util.c
 SRC:= $(SL:%.c=$(SRC_DIR)/%.c)
 
 

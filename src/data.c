@@ -59,3 +59,22 @@ size_t initParam (ParamVal * const pP, void *p, const Scalar kL[3], const V2U32 
    }
    return(0);
 } // initParam
+
+size_t initBuff (const HostBuff *pB, const V2U32 d, const U16 step)
+{
+   const size_t n= d.x * d.y;
+   size_t  i, nB= 0;
+   U16 x, y;
+   
+   for ( i= 0; i < n; ++i ) { pB->pAB[0][i]= 1.0; pB->pAB[0][n+i]= 0.0; }
+   for ( y= step; y < d.y; y+= step )
+   {
+      for ( x= step; x < d.x; x+= step )
+      {
+         i= y * d.x + x;
+         if (i < n) { pB->pAB[0][n+i]= 1.0; nB++; }
+      }
+   }
+   return(nB);
+} // initBuff
+
