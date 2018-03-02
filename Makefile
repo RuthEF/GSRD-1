@@ -10,23 +10,29 @@
 #
 ################################################################################
 
-CC       = pgcc
+CC       = pgcc -fast
+CCFLAGS  = -DLAPLACE_FUNCTION
+ACCFLAGS = -Minfo -acc $(OPT)
+
 OBJ	= o
 EXE	= out
 RUN     =
+
 UNAME := $(shell uname -a)
+ifeq ($(findstring Darwin, $(UNAME)), Darwin)
+CC       = clang -std=c11 -W
+ACCFLAGS =
+endif
 ifeq ($(findstring CYGWIN_NT, $(UNAME)), CYGWIN_NT)
 OBJ	= obj
 EXE	= exe
 endif
-CCFLAGS  = -fast -DLAPLACE_FUNCTION
-ACCFLAGS = -Minfo -acc $(OPT)
 
 all: build run verify
 
 SRC_DIR=src
 
-SL= gsrd.c util.c
+SL= gsrd.c data.c util.c
 SRC:= $(SL:%.c=$(SRC_DIR)/%.c)
 
 

@@ -41,14 +41,38 @@ size_t fileSize (const char * const path)
    return(0);
 } // fileSize
 
+size_t loadBuff (void * const pB, const char * const path, const size_t bytes)
+{
+   FILE *hF= fopen(path,"r");
+   if (hF)
+   {
+      size_t r= fread(pB, 1, bytes, hF);
+      fclose(hF);
+      if (r == bytes) { return(r); }
+   }
+   return(0);
+} // loadBuff
+
+size_t saveBuff (const void * const pB, const char * const path, const size_t bytes)
+{
+   FILE *hF= fopen(path,"r");
+   if (hF)
+   {
+      size_t r= fwrite(pB, 1, bytes, hF);
+      fclose(hF);
+      if (r == bytes) { return(r); }
+   }
+   return(0);
+} // saveBuff
+
 int scanZ (size_t * const pZ, const char s[])
 {
    const char *pE=NULL;
    int n=0;
-   long long int i= strtoll(s, &pE, 10);
+   long long int z= strtoll(s, (char**)&pE, 10);
    if (pE && (pE > s))
    {
-      if (pZ) { *pZ= i; }
+      if (pZ) { *pZ= z; }
       n= pE - s;
    }
    return(n);
@@ -71,11 +95,11 @@ int scanVI (int v[], const int vMax, ScanSeg * const pSS, const char s[])
       do
       {
          const char *pE=NULL;
-         v[nI]= strtol(pT1, &pE, 10);
+         v[nI]= strtol(pT1, (char**)&pE, 10);
          if (pE && (pE > pT1)) { nI++; pT1= pE; }
          //v[nI++]= atoi(pT1);
          pT1= sc(pT1, ',', pT2, 1);
-      } while (pT1);
+      } while (pT1 && (nI < vMax));
    }
    if (pSS) { *pSS= ss; }
    return(nI);
@@ -115,7 +139,7 @@ int scanDFI (DataFileInfo * pDFI, const char * const path)
 
 int scanArgs (ArgInfo *pAI, const char *a[], int nA)
 {
-   const char *pCh, *pT1, *pT2;
+   const char *pCh;
    ArgInfo tmpAI;
    int n= 0;
    if (NULL == pAI) { pAI= &tmpAI; }

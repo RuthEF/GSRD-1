@@ -4,6 +4,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
 #include <math.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -21,8 +23,17 @@ typedef unsigned char  U8;
 typedef unsigned short U16;
 typedef unsigned long  U32;
 
+typedef struct
+{
+   size_t bytes;
+   void  *p;
+} MemBuff;
+
 typedef struct { U16 x, y; } V2U16;
+typedef struct { U32 x, y; } V2U32;
+
 typedef struct { U16 start, len; } ScanSeg;
+
 typedef struct
 {
    const char  *path, *name;
@@ -42,6 +53,12 @@ typedef struct
    DataFileInfo   dfi;
    ProcInfo       proc;
 } ArgInfo;
+
+/***/
+
+extern size_t fileSize (const char * const path);
+extern size_t loadBuff (void * const pB, const char * const path, const size_t bytes);
+extern size_t saveBuff (const void * const pB, const char * const path, const size_t bytes);
 
 
 // extern const char *sc (const char *s, const char c, const char * const e, const I8 o);

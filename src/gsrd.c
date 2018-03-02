@@ -1,7 +1,9 @@
+#ifdef OPENACC
 #include <openacc.h>
 //#include <assert.h>
 //#include <accelmath.h>
-#include "util.h"
+#endif
+#include "data.h"
 
 #if defined(_WIN32) || defined(_WIN64)
 #include <sys/timeb.h>
@@ -15,62 +17,16 @@ typedef struct _timeb timestruct;
 typedef struct timeval timestruct;
 #endif
 
-#define KR0  (Scalar)0.125
-#define KRA0 (Scalar)0.0115
-#define KDB0 (Scalar)0.0195
-#define KLA0 (Scalar)0.25
-#define KLB0 (Scalar)0.025
-
-//typedef float Scalar;
-typedef double       Scalar;
-typedef signed long  Stride;
-typedef signed long  Index;
 
 typedef struct
 {
-   Stride x,y;
-} SV2;
-
-typedef struct
-{
-   Scalar *pAB[2], *pC;
-} HostBuff;
-
-typedef struct
-{
-   Scalar min, max, sum;
+   double min, max, sum;
 } FieldStat;
-
-typedef struct
-{
-   Scalar a[3], b[3];
-} KLAB;
-
-typedef struct
-{
-   KLAB   kL;
-   Scalar kRR, kRA, kDB;
-   const Scalar * restrict pKRR, * restrict pKRA, * restrict pKDB;
-   size_t n;
-} ParamVal;
 
 typedef struct
 {
    FieldStat a, b;
 } BlockStat;
-
-typedef struct
-{
-   V2U32  def;
-   Stride stride[4];
-   size_t n;
-} ImgOrg;
-
-typedef struct
-{
-   size_t bytes;
-   void  *p;
-} MemBuff;
 
 typedef struct
 {
@@ -88,62 +44,6 @@ static const Scalar gKL[3]= {-1, 0.2, 0.05};
 static Context gCtx={0};
 
 /***/
-
-void initOrg (ImgOrg * const pO, U16 w, U16 h, U8 flags)
-{
-   if (pO)
-   {
-      pO->def.x= w;
-      pO->def.y= h;
-      if (0 == (flags & 1))
-      {  // planar
-         pO->stride[0]= 1;     // next element, same phase
-         pO->stride[3]= w * h; // same element, next phase
-      }
-      else
-      {  // interleaved
-         pO->stride[0]= 2; // same phase
-         pO->stride[3]= 1; // next phase
-      }
-      pO->stride[1]= w * pO->stride[0]; // line
-      pO->stride[2]= h * pO->stride[1]; // plane
-      pO->n= 2 * pO->stride[2]; // complete buffer
-   }
-} // initOrg
-
-size_t paramBytes (U16 w, U16 h) { return(MAX(w,h) * 3 * sizeof(Scalar)); }
-
-size_t initParam (ParamVal * const pP, void *p, U16 w, U16 h, Scalar varR, Scalar varD) // ParamArgs *
-{
-   U16 i, n;
-
-   // Set diffusion weights
-   for ( i= 0; i<3; ++i ) { pP->kL.a[i]= gKL[i] * KLA0; pP->kL.b[i]= gKL[i] * KLB0; }
-   pP->kRR= KR0;
-   pP->kRA= KRA0;
-   pP->kDB= KDB0;
-   pP->pKRR= pP->pKRA= pP->pKDB= p;
-   if (p)
-   {
-      Scalar kRR=KR0, kRA=KRA0, kDB=KDB0;
-      Scalar dKRR=0, dKRA=0, dKDB=0;
-      Scalar *pA= p;
-      pP->n= n= MAX(w, h);
-      dKRR= (kRR * varR) / n;
-      dKDB= (kDB * varD) / n;
-      pP->pKRA+= n;
-      pP->pKDB+= 2*n;
-      for (i= 0; i<n; ++i)
-      {
-         pA[i]= kRR; kRR+= dKRR;
-         pA[n+i]= kRA; kRA+= dKRA;
-         pA[2*n+i]= kDB; kDB+= dKDB;
-      }
-      return(3*pP->n);
-   }
-   return(0);
-} // initParam
-
 Context *initCtx (Context * const pC, U16 w, U16 h, U16 nF)
 {
    if (0 == w) { w= 256; }
@@ -194,37 +94,20 @@ size_t initBuff (const HostBuff *pB, const V2U32 d, const U16 step)
    return(nB);
 } // initBuff
 
-size_t loadBuff (void * const pB, const char * const path, const size_t bytes)
+void saveFrame (const Scalar * const pB, const V2U32 d, const U32 i)
 {
-   FILE *hF= fopen(path,"r");
-   if (hF)
-   {
-      size_t r= fread(pB, 1, bytes, hF);
-      fclose(hF);
-      if (r == bytes) { return(r); }
-   }
-   return(0);
-} // loadBuff
-
-void saveBuff (const Scalar * const pB, const V2U32 d, const U32 i)
-{
-   FILE *hF;
    char name[64];
    const size_t n= d.x * d.y * 2;
 
    if (n > 0)
    {
-      snprintf(name, sizeof(name)-1, "raw/gsrd%05d(%d,%d,2)F64.raw", i, d.x, d.y);
-      hF= fopen(name,"w");
-      if (hF)
+      snprintf(name, sizeof(name)-1, "raw/gsrd%05lu(%lu,%lu,2)F64.raw", i, d.x, d.y);
+      if (saveBuff(pB, sizeof(Scalar) * n, name))
       {
-         size_t r= fwrite(pB, sizeof(Scalar), n, hF);
-         fclose(hF);
-         // return(r > 0);
-         printf("saveBuff() - %s %p %zu bytes\n", name, pB, r);
+         printf("saveFrame() - %s %p %zu bytes\n", name, pB, r);
       }
    }
-} // saveBuff
+} // saveFrame
 
 
 #define LAPLACE2D2S9P(pS,i,sv,k) ( (pS)[0] * k[0] + \
@@ -473,7 +356,7 @@ int main ( int argc, char* argv[] )
          //printf("nB=%zu\n",
       {
          initBuff(&(gCtx.hb), gCtx.org.def, 32);
-         saveBuff(gCtx.hb.pAB[0], gCtx.org.def, gCtx.i);
+         saveFrame(gCtx.hb.pAB[0], gCtx.org.def, gCtx.i);
       }
       if (pPI->subIter > 0) { iM= pPI->subIter; }
       //printf("iter=%zu,%zu\n", pPI->subIter, pPI->maxIter);
@@ -495,7 +378,7 @@ int main ( int argc, char* argv[] )
          tE0= 1E-6 * USEC(t1,t2);
          tE1+= tE0;
          printf("\ttE= %G, %G\n", tE0, tE1);
-         saveBuff(gCtx.hb.pAB[k], gCtx.org.def, gCtx.i);
+         saveFrame(gCtx.hb.pAB[k], gCtx.org.def, gCtx.i);
       } while (gCtx.i < pPI->maxIter);
       releaseCtx(&gCtx);
    }
