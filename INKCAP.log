@@ -1,0 +1,120 @@
+src/gsrd.c:
+bindCtx:
+    100, Generating copyin(pC->org,pC->pv)
+    101, Generating copyin(pP->pKRA[:pP->n],pP->pKDB[:pP->n],pP->pKRR[:pP->n])
+    102, Generating copyin(pS[:pO->n])
+    103, Generating create(pR[:pO->n])
+summarise:
+    116, Loop unrolled 2 times
+main:
+    149, Loop not vectorized/parallelized: contains call
+    180, Loop not vectorized/parallelized: contains call
+src/proc.c:
+proc:
+     64, Generating present(pO[:],pR[:pO->n],pP[:],pS[:pO->n])
+     65, Generating copyout(pR[:pO->n])
+     66, Loop not vectorized/parallelized: contains call
+     72, Parallelization would require privatization of array pR[:i1+pO->n]
+         Accelerator scalar kernel generated
+         Accelerator kernel generated
+         Generating Tesla code
+         72, #pragma acc loop seq
+         74, #pragma acc loop seq
+     72, Loop not fused: no successor loop
+     74, Complex loop carried dependence of pR-> prevents parallelization
+         Parallelization would require privatization of array pR[:i1+pO->n]
+         Complex loop carried dependence of pR-> prevents parallelization
+         Parallelization would require privatization of array pR[:i1+pO->n]
+         Loop not vectorized: data dependency
+         FMA (fused multiply-add) instruction(s) generated
+     87, laplace2D2S9P inlined, size=18 (inline) file src/proc.c (11)
+     88, laplace2D2S9P inlined, size=18 (inline) file src/proc.c (11)
+    105, Generating implicit copy(wrap[:])
+    106, Complex loop carried dependence of pR-> prevents parallelization
+         Parallelization would require privatization of array pR[:pO->n]
+         Accelerator scalar kernel generated
+         Accelerator kernel generated
+         Generating Tesla code
+        106, #pragma acc loop seq
+    106, Complex loop carried dependence of pR-> prevents parallelization
+         Parallelization would require privatization of array pR[:pO->n]
+         Loop not fused: no successor loop
+         Loop not vectorized: data dependency
+         FMA (fused multiply-add) instruction(s) generated
+    115, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (19)
+    116, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (19)
+    124, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (19)
+    125, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (19)
+    139, Generating implicit copy(wrap[:])
+    140, Complex loop carried dependence of pR-> prevents parallelization
+         Parallelization would require privatization of array pR[:pO->n]
+         Accelerator scalar kernel generated
+         Accelerator kernel generated
+         Generating Tesla code
+        140, #pragma acc loop seq
+    140, Complex loop carried dependence of pR-> prevents parallelization
+         Parallelization would require privatization of array pR[:pO->n]
+         Loop not fused: no successor loop
+         Loop not vectorized: data dependency
+         FMA (fused multiply-add) instruction(s) generated
+    148, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (19)
+    149, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (19)
+    157, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (19)
+    158, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (19)
+    166, FMA (fused multiply-add) instruction(s) generated
+    170, proc1 inlined, size=51 (inline) file src/proc.c (26)
+    171, proc1 inlined, size=51 (inline) file src/proc.c (26)
+    177, proc1 inlined, size=51 (inline) file src/proc.c (26)
+    178, proc1 inlined, size=51 (inline) file src/proc.c (26)
+src/data.c:
+initParam:
+     37, Loop unrolled 3 times (completely unrolled)
+     52, Loop not fused: no successor loop
+         Loop not vectorized: data dependency
+         Loop unrolled 2 times
+initBuff:
+     69, Loop not vectorized: data dependency
+         Loop unrolled 8 times
+         Generated 2 prefetches in scalar loop
+     72, Loop not vectorized/parallelized: not countable
+src/util.c:
+sc:
+      9, Loop not vectorized/parallelized: potential early exits
+     10, Loop not vectorized/parallelized: potential early exits
+stripPath:
+     24, Loop not vectorized/parallelized: not countable
+scanVI:
+     96, Loop not vectorized/parallelized: potential early exits
+scanChZ:
+    113, Loop not vectorized/parallelized: potential early exits
+scanArgs:
+    146, Loop not vectorized/parallelized: contains call
+pgcc -fast -DLAPLACE_FUNCTION -Minfo -acc  -o gsrd.out src/gsrd.c src/proc.c src/data.c src/util.c
+./gsrd.out "init/gsrd00000(512,512,2)F64.raw"
+gsrd00000(512,512,2)F64.raw -> v[3]=(512,512,2,)*64
+summarise() - 
+	   min, max, sum
+	A: 0.102954, 0.999453, 204016
+	B: 3.90765E-06, 1.53974, 34336.9
+	tE= 4.82348, 4.82348
+summarise() - 
+	   min, max, sum
+	A: 0.143244, 1, 178860
+	B: 1.12932E-14, 1.19297, 49508.6
+	tE= 5.03372, 9.85719
+summarise() - 
+	   min, max, sum
+	A: 0.140036, 1, 156537
+	B: 3.27352E-23, 1.2206, 62629.1
+	tE= 4.8286, 14.6858
+summarise() - 
+	   min, max, sum
+	A: 0.150161, 1, 135959
+	B: 1.12108E-27, 1.19108, 74585.1
+	tE= 4.82446, 19.5103
+summarise() - 
+	   min, max, sum
+	A: 0.147013, 0.999999, 121281
+	B: 7.75024E-25, 1.19056, 83149
+	tE= 4.82377, 24.334
+Test PASSED
