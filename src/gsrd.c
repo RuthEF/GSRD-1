@@ -69,7 +69,7 @@ typedef struct
 
 typedef struct
 {
-   V2U16  def;
+   V2U32  def;
    Stride stride[4];
    size_t n;
 } ImgOrg;
@@ -184,7 +184,7 @@ void releaseCtx (Context * const pC)
    if (pC && pC->buff.p && (pC->buff.bytes > 0)) { free(pC->buff.p); memset(pC, 0, sizeof(*pC)); }
 } // releaseCtx
 
-size_t initBuff (const HostBuff *pB, const V2U16 d, const U16 step)
+size_t initBuff (const HostBuff *pB, const V2U32 d, const U16 step)
 {
    const size_t n= d.x * d.y;
    size_t  i, nB= 0;
@@ -214,7 +214,7 @@ size_t loadBuff (void * const pB, const char * const path, const size_t bytes)
    return(0);
 } // loadBuff
 
-void saveBuff (const Scalar * const pB, const V2U16 d, const U32 i)
+void saveBuff (const Scalar * const pB, const V2U32 d, const U32 i)
 {
    FILE *hF;
    char name[64];
@@ -269,28 +269,50 @@ void proc1 (Scalar * const pR, const Scalar * const pI, const int i, const int j
 #endif
 } // proc1
 
+void bindCtx (const Context * pC)
+{
+   const ParamVal *pP= &(pC->pv);
+   const ImgOrg   *pO= &(pC->org);
+   U32 iS= pC->i & 1;
+   U32 iR = iS ^ 1;
+   Scalar * pS= pC->hb.pAB[iS];
+   Scalar * pR= pC->hb.pAB[iR];
+   //#pragma acc data copyin( pO[0:1], pP[0:1], pP->pKRR[0:pP->n], pP->pKRA[0:pP->n], pP->pKDB[0:pP->n] )
+   //pragma acc data copyin( &(pC->org)[0:1], &(pC->pv)[0:1] )
+   #pragma acc data copyin( pC->org, pC->pv )
+   #pragma acc data copyin( pP->pKRR[0:pP->n], pP->pKRA[0:pP->n], pP->pKDB[0:pP->n] )
+   #pragma acc data copyin( pS[0:pO->n] )
+   #pragma acc data create( pR[0:pO->n] )
+   ;
+   return;
+} // bindParam
+
 // _rab2= KR0 * a * b * b
 // a+= laplace9P(a, KLA0) - _rab2 + mKRA * (1 - a)
 // b+= laplace9P(b, KLB0) + _rab2 - mKDB * b
-size_t proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * restrict pO, const ParamVal * restrict pP, const size_t iterMax)
+U32 proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * restrict pO, const ParamVal * restrict pP, const U32 iterMax)
 {
    const SV2 sv2={pO->stride[0],pO->stride[1]};
    Stride wrap[6]; // LRBT strides for boundary wrap
-   U16 x, y;
-   const Index endX= pO->def.x-1;
-   const Index endY= pO->def.y-1;
-   size_t iter= 0;
-   
-   // Process according to memory access pattern (boundary wrap)
-   // Interior
-   #pragma acc data copyin( pP->pKRR[0:pP->n], pP->pKRA[0:pP->n], pP->pKDB[0:pP->n], pS[0:pO->n] ) copyout( pR[0:pO->n] ) 
+   const V2U32 end= {pO->def.x-1, pO->def.y-1};
+   U32 x, y, iter= 0;
+
+   //pragma acc data copyin( pP->pKRR[0:pP->n], pP->pKRA[0:pP->n], pP->pKDB[0:pP->n]
+   #pragma acc data present( pP, pO, pS, pR )
+   //pragma acc data copyin( pS[0:pO->n] ) create( pR[0:pO->n] )
+   #pragma acc data copyout( pR[0:pO->n] )
    {
       for ( iter= 0; iter < iterMax; ++iter )
       {
-         #pragma acc kernels loop present( pR[0:pO->n], pS[0:pO->n] ) independent
-         for ( y= 1; y < endY; ++y )
+	 // Process according to memory access pattern (boundary wrap)
+	 // First the interior
+// present( pS[0:pO->n] ) independent
+// present( pR[0:pO->n] ) independent
+// present( pR[0:pO->n] ) private( pR )
+         #pragma acc kernels loop
+         for ( y= 1; y < end.y; ++y )
          {
-            for ( x= 1; x < endX; ++x )
+            for ( x= 1; x < end.x; ++x )
             {
                const Index i= y * pO->stride[1] + x * pO->stride[0];
                const Index j= i + pO->stride[3];
@@ -321,7 +343,7 @@ size_t proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * re
          wrap[4]= pO->stride[1] - pO->stride[2]; wrap[5]= -pO->stride[1];
 
          // Horizontal top & bottom
-         for ( x= 1; x < (pO->def.x-1); ++x )
+         for ( x= 1; x < end.x; ++x )
          {
             const Index i1= x * pO->stride[0];
             const Index j1= i1 + pO->stride[3];
@@ -340,7 +362,7 @@ size_t proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * re
             const Scalar b2= pS[j2];
             rab2= pP->pKRR[x] * a2 * b2 * b2;
             pR[i2]= a2 + laplace2D4S9P(pS+i2, wrap+2, pP->kL.a) - rab2 + pP->pKRA[x] * (1 - a2);
-            pR[j2]= b2 + laplace2D4S9P(pS+j2, wrap+2, pP->kL.b) + rab2 - pP->pKDB[endY] * b2;
+            pR[j2]= b2 + laplace2D4S9P(pS+j2, wrap+2, pP->kL.b) + rab2 - pP->pKDB[end.y] * b2;
          }
 #endif
 #if 1
@@ -354,7 +376,7 @@ size_t proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * re
          wrap[4]= -pO->stride[0]; wrap[5]= pO->stride[0] - pO->stride[1];
 
          // left & right
-         for ( y= 1; y < (pO->def.y-1); ++y )
+         for ( y= 1; y < end.y; ++y )
          {
             Scalar a, b, rab2;
             const Index i1= y * pO->stride[1];
@@ -370,8 +392,8 @@ size_t proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * re
             const Index j2= j1 + offsX;
             a= pS[i2];
             b= pS[j2];
-            rab2= pP->pKRR[endX] * a * b * b;
-            pR[i2]= a + laplace2D4S9P(pS+i2, wrap+2, pP->kL.a) - rab2 + pP->pKRA[endX] * (1 - a);
+            rab2= pP->pKRR[end.x] * a * b * b;
+            pR[i2]= a + laplace2D4S9P(pS+i2, wrap+2, pP->kL.a) - rab2 + pP->pKRA[end.x] * (1 - a);
             pR[j2]= b + laplace2D4S9P(pS+j2, wrap+2, pP->kL.b) + rab2 - pP->pKDB[y] * b;
          }
 #endif
@@ -394,7 +416,7 @@ size_t proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * re
          proc1(pR, pS, pO->stride[2]-pO->stride[1], pO->stride[3], wrap+0, pP);
          proc1(pR, pS, pO->stride[2]-pO->stride[0], pO->stride[3], wrap+2, pP);
 #endif
-         if (iter < iterMax) { Scalar *pT= pS; pS= pR; pR= pT; } // SWAP()
+         if (iter < iterMax) { Scalar *pT= (Scalar*)pS; pS= pR; pR= pT; } // SWAP()
       } // for iter < iterMax
    } // acc copy ...
    return(iter);
@@ -469,6 +491,8 @@ int main ( int argc, char* argv[] )
       }
       if (pPI->subIter > 0) { iM= pPI->subIter; }
       //printf("iter=%zu,%zu\n", pPI->subIter, pPI->maxIter);
+
+      bindCtx( &gCtx );
       do
       {
          int k= gCtx.i & 0x1;
@@ -479,7 +503,7 @@ int main ( int argc, char* argv[] )
          GETTIME(&t1);
          gCtx.i+= proc(gCtx.hb.pAB[(k^0x1)], gCtx.hb.pAB[k], &(gCtx.org), &(gCtx.pv), iM);
          GETTIME(&t2);
-         
+
          k= gCtx.i & 0x1;
          summarise(&bs, gCtx.hb.pAB[k], &(gCtx.org));
          tE0= 1E-6 * USEC(t1,t2);
