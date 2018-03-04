@@ -178,7 +178,11 @@ U32 proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, c
          wrap[4]= pO->stride[1] - pO->stride[2]; wrap[5]= -pO->stride[1];
 
          // Horizontal top & bottom
+#ifdef ACC_AUTO
          #pragma acc kernels loop
+#else
+         #pragma acc parallel loop
+#endif
          for ( x= 1; x < end.x; ++x )
          {
             const Index i1= x * pO->stride[0];
@@ -212,7 +216,11 @@ U32 proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, c
          wrap[4]= -pO->stride[0]; wrap[5]= pO->stride[0] - pO->stride[1];
 
          // left & right
+#ifdef ACC_AUTO
          #pragma acc kernels loop
+#else
+         #pragma acc parallel loop
+#endif
          for ( y= 1; y < end.y; ++y )
          {
             Scalar a, b, rab2;
