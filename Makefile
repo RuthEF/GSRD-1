@@ -1,3 +1,4 @@
+
 ################################################################################
 #
 # Copyright (c) 2017, NVIDIA Corporation.  All rights reserved.
@@ -12,7 +13,8 @@
 
 CC       = pgcc -fast
 CCFLAGS  = -DLAPLACE_FUNCTION
-ACCFLAGS = -Minfo -acc $(OPT)
+ACCFLAGS = -Minfo=all -acc $(OPT)
+# -ta=tesla:managed -> malloc: call to cuMemAllocManaged returned error 3: Not initialized
 
 OBJ	= o
 EXE	= out

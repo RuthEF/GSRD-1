@@ -14,6 +14,12 @@
 #ifndef MAX
 #define MAX(a,b) (a)>(b)?(a):(b)
 #endif
+#ifndef TRUE
+#define TRUE (1)
+#endif
+#ifndef FALSE
+#define FALSE (0)
+#endif
 
 typedef signed char  I8;
 typedef signed short I16;
@@ -22,6 +28,8 @@ typedef signed long  I32;
 typedef unsigned char  U8;
 typedef unsigned short U16;
 typedef unsigned long  U32;
+
+typedef int Bool32;
 
 typedef struct
 {

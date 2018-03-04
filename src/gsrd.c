@@ -91,6 +91,8 @@ size_t saveFrame (const Scalar * const pB, const V2U32 d, const U32 i)
 
 void bindCtx (const Context * pC)
 {
+   procBindData( &(pC->hb), &(pC->pv), &(pC->org), pC->i );
+/*
    const ParamVal *pP= &(pC->pv);
    const ImgOrg   *pO= &(pC->org);
    U32 iS= pC->i & 1;
@@ -103,6 +105,7 @@ void bindCtx (const Context * pC)
    #pragma acc data create( pR[0:pO->n] )
    ;
    return;
+*/
 } // bindCtx
 
 void summarise (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * const pO)
@@ -155,11 +158,10 @@ int main ( int argc, char* argv[] )
          if (ai.dfi.bytes != ((bits+7) >> 3)) { printf("WARNING: %zu != %zu", ai.dfi.bytes, bits); }
       }
    }
-   //acc_init( acc_device_nvidia );
 
    const DataFileInfo *pDFI= &(ai.dfi);
    const ProcInfo *pPI= &(ai.proc);
-   if (initCtx(&gCtx, pDFI->v[0], pDFI->v[1], 4))
+   if (procInitAcc() && initCtx(&gCtx, pDFI->v[0], pDFI->v[1], 4))
    {
       size_t i= 0, iM= pPI->maxIter, iR;
       timestruct t1, t2;
