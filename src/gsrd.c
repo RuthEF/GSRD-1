@@ -40,6 +40,7 @@ static const Scalar gKL[3]= {-1, 0.2, 0.05};
 static Context gCtx={0};
 
 /***/
+
 Context *initCtx (Context * const pC, U16 w, U16 h, U16 nF)
 {
    if (0 == w) { w= 256; }
@@ -52,6 +53,7 @@ Context *initCtx (Context * const pC, U16 w, U16 h, U16 nF)
       void *p= malloc(b);
       if (p)
       {
+         printf("initCtx() - %zu bytes @ %p\n", b, p);
          pC->buff.p= p;
          pC->buff.bytes= b;
 
@@ -72,16 +74,16 @@ void releaseCtx (Context * const pC)
    if (pC && pC->buff.p && (pC->buff.bytes > 0)) { free(pC->buff.p); memset(pC, 0, sizeof(*pC)); }
 } // releaseCtx
 
-size_t saveFrame (const Scalar * const pB, const V2U32 d, const U32 i)
+size_t saveFrame (const Scalar * const pB, const V2U32 def, const U32 iNum)
 {
    char name[64];
-   const size_t n= d.x * d.y * 2;
+   const size_t n= def.x * def.y * 2;
    size_t r= 0;
    if (n > 0)
    {
-      snprintf(name, sizeof(name)-1, "raw/gsrd%05lu(%lu,%lu,2)F64.raw", i, d.x, d.y);
+      snprintf(name, sizeof(name)-1, "raw/gsrd%05lu(%lu,%lu,2)F64.raw", iNum, def.x, def.y);
       r= saveBuff(pB, name, sizeof(Scalar) * n);
-      if (r > 0)
+      //if (r > 0)
       {
          printf("saveFrame() - %s %p %zu bytes\n", name, pB, r);
       }
@@ -92,20 +94,6 @@ size_t saveFrame (const Scalar * const pB, const V2U32 d, const U32 i)
 void bindCtx (const Context * pC)
 {
    procBindData( &(pC->hb), &(pC->pv), &(pC->org), pC->i );
-/*
-   const ParamVal *pP= &(pC->pv);
-   const ImgOrg   *pO= &(pC->org);
-   U32 iS= pC->i & 1;
-   U32 iR = iS ^ 1;
-   Scalar * pS= pC->hb.pAB[iS];
-   Scalar * pR= pC->hb.pAB[iR];
-   #pragma acc data copyin( pC->org, pC->pv )
-   #pragma acc data copyin( pP->pKRR[0:pP->n], pP->pKRA[0:pP->n], pP->pKDB[0:pP->n] )
-   #pragma acc data copyin( pS[0:pO->n] )
-   #pragma acc data create( pR[0:pO->n] )
-   ;
-   return;
-*/
 } // bindCtx
 
 void summarise (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * const pO)

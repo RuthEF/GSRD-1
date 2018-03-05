@@ -95,7 +95,7 @@ Bool32 procInitAcc (void) // arg param ?
    int nH= acc_get_num_devices( acc_device_host );
    int nNH= acc_get_num_devices( acc_device_not_host );
 
-   printf("procInitAcc() - nNV=%d, nH=%d, nNH=%d\n", nNV, nH, nNH);
+   printf("procInitAcc() - nNV=%d, nH=%d (other=%d)\n", nNV, nH, nNH - nNV);
    if (nNV > 0)
    {
       acc_init( acc_device_nvidia );
@@ -111,29 +111,38 @@ Bool32 procInitAcc (void) // arg param ?
 
 void procBindData (const HostBuff * const pHB, const ParamVal * const pP, const ImgOrg * const pO, const U32 iS)
 {
+   return;
    U32 iR = iS ^ 1;
    Scalar * restrict pS= pHB->pAB[iS];
    Scalar * restrict pR= pHB->pAB[iR];
+
+   printf("procBindData() - pP=%p, pO=%p\n", pP, pO);
    #pragma acc data copyin( pP[0:1], pO[0:1] )
    #pragma acc data copyin( pP->pKRR[0:pP->n], pP->pKRA[0:pP->n], pP->pKDB[0:pP->n] )
    #pragma acc data copyin( pS[0:pO->n] )
    #pragma acc data create( pR[0:pO->n] )
    ;
-   return;
-} // bindData
+} // procBindData
 
 // _rab2= KR0 * a * b * b
 // a+= laplace9P(a, KLA0) - _rab2 + mKRA * (1 - a)
 // b+= laplace9P(b, KLB0) + _rab2 - mKDB * b
 U32 proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP, const U32 iterMax)
 {
+#ifndef LAPLACE_FUNCTION
    const SV2 sv2={pO->stride[0],pO->stride[1]};
+#endif
    Stride wrap[6]; // LRBT strides for boundary wrap
    const V2U32 end= {pO->def.x-1, pO->def.y-1};
    U32 x, y, iter= 0;
 
-      #pragma acc data present( pP, pO, pS[0:pO->n], pR[0:pO->n]  )
-      #pragma acc data copyout( pR[0:pO->n] )
+   #pragma acc data copyin( pP[0:1], pO[0:1] ) \
+      copyin( pP->pKRR[0:pP->n], pP->pKRA[0:pP->n], pP->pKDB[0:pP->n] ) \
+      copyin( pS[0:pO->n] ) \
+      copy( pR[0:pO->n] )
+   {
+      //#pragma acc data present( pP, pO, pS[0:pO->n], pR[0:pO->n]  )
+      //#pragma acc data copyout( pR[0:pO->n] )
       for ( iter= 0; iter < iterMax; ++iter )
       {
 	 // Process according to memory access pattern (boundary wrap)
@@ -263,5 +272,6 @@ U32 proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, c
 #endif
          if (iter < iterMax) { Scalar *pT= (Scalar*)pS; pS= pR; pR= pT; } // SWAP()
       } // for iter < iterMax
+   }
    return(iter);
 } // proc
