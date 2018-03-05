@@ -1,71 +1,47 @@
 src/gsrd.c:
-bindCtx:
-    100, Generating copyin(pC->org,pC->pv)
-    101, Generating copyin(pP->pKRA[:pP->n],pP->pKDB[:pP->n],pP->pKRR[:pP->n])
-    102, Generating copyin(pS[:pO->n])
-    103, Generating create(pR[:pO->n])
 summarise:
-    116, Loop unrolled 2 times
+    119, Loop unrolled 2 times
 main:
-    149, Loop not vectorized/parallelized: contains call
-    180, Loop not vectorized/parallelized: contains call
+    152, Loop not vectorized/parallelized: contains call
+    182, Loop not vectorized/parallelized: contains call
 src/proc.c:
+procBindData:
+    117, Generating copyin(pO[:1],pP[:1])
+    118, Generating copyin(pP->pKRA[:pP->n],pP->pKDB[:pP->n],pP->pKRR[:pP->n])
+    119, Generating copyin(pS[:pO->n])
+    120, Generating create(pR[:pO->n])
 proc:
-     64, Generating present(pO[:],pR[:pO->n],pP[:],pS[:pO->n])
-     65, Generating copyout(pR[:pO->n])
-     66, Loop not vectorized/parallelized: contains call
-     72, Parallelization would require privatization of array pR[:i1+pO->n]
-         Accelerator scalar kernel generated
-         Accelerator kernel generated
+    135, Generating present(pO[:],pR[:pO->n],pP[:],pS[:pO->n])
+    136, Generating copyout(pR[:pO->n])
+    137, Loop not vectorized/parallelized: contains call
+    145, Accelerator kernel generated
          Generating Tesla code
-         72, #pragma acc loop seq
-         74, #pragma acc loop seq
-     72, Loop not fused: no successor loop
-     74, Complex loop carried dependence of pR-> prevents parallelization
-         Parallelization would require privatization of array pR[:i1+pO->n]
-         Complex loop carried dependence of pR-> prevents parallelization
-         Parallelization would require privatization of array pR[:i1+pO->n]
-         Loop not vectorized: data dependency
-         FMA (fused multiply-add) instruction(s) generated
-     87, laplace2D2S9P inlined, size=18 (inline) file src/proc.c (11)
-     88, laplace2D2S9P inlined, size=18 (inline) file src/proc.c (11)
-    105, Generating implicit copy(wrap[:])
-    106, Complex loop carried dependence of pR-> prevents parallelization
-         Parallelization would require privatization of array pR[:pO->n]
-         Accelerator scalar kernel generated
-         Accelerator kernel generated
+        147, #pragma acc loop gang /* blockIdx.x */
+        150, #pragma acc loop vector(128) /* threadIdx.x */
+    150, Loop is parallelizable
+    163, laplace2D2S9P inlined, size=18 (inline) file src/proc.c (24)
+    164, laplace2D2S9P inlined, size=18 (inline) file src/proc.c (24)
+    184, Accelerator kernel generated
          Generating Tesla code
-        106, #pragma acc loop seq
-    106, Complex loop carried dependence of pR-> prevents parallelization
-         Parallelization would require privatization of array pR[:pO->n]
-         Loop not fused: no successor loop
-         Loop not vectorized: data dependency
-         FMA (fused multiply-add) instruction(s) generated
-    115, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (19)
-    116, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (19)
-    124, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (19)
-    125, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (19)
-    139, Generating implicit copy(wrap[:])
-    140, Complex loop carried dependence of pR-> prevents parallelization
-         Parallelization would require privatization of array pR[:pO->n]
-         Accelerator scalar kernel generated
-         Accelerator kernel generated
+        186, #pragma acc loop gang, vector(128) /* blockIdx.x threadIdx.x */
+    184, Generating implicit copy(wrap[:])
+    195, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (33)
+    196, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (33)
+    204, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (33)
+    205, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (33)
+    222, Accelerator kernel generated
          Generating Tesla code
-        140, #pragma acc loop seq
-    140, Complex loop carried dependence of pR-> prevents parallelization
-         Parallelization would require privatization of array pR[:pO->n]
-         Loop not fused: no successor loop
-         Loop not vectorized: data dependency
-         FMA (fused multiply-add) instruction(s) generated
-    148, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (19)
-    149, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (19)
-    157, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (19)
-    158, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (19)
-    166, FMA (fused multiply-add) instruction(s) generated
-    170, proc1 inlined, size=51 (inline) file src/proc.c (26)
-    171, proc1 inlined, size=51 (inline) file src/proc.c (26)
-    177, proc1 inlined, size=51 (inline) file src/proc.c (26)
-    178, proc1 inlined, size=51 (inline) file src/proc.c (26)
+        224, #pragma acc loop gang, vector(128) /* blockIdx.x threadIdx.x */
+    222, Generating implicit copy(wrap[:])
+    232, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (33)
+    233, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (33)
+    241, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (33)
+    242, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (33)
+    250, FMA (fused multiply-add) instruction(s) generated
+    254, proc1 inlined, size=51 (inline) file src/proc.c (41)
+    255, proc1 inlined, size=51 (inline) file src/proc.c (41)
+    261, proc1 inlined, size=51 (inline) file src/proc.c (41)
+    262, proc1 inlined, size=51 (inline) file src/proc.c (41)
 src/data.c:
 initParam:
      37, Loop unrolled 3 times (completely unrolled)
@@ -89,32 +65,16 @@ scanChZ:
     113, Loop not vectorized/parallelized: potential early exits
 scanArgs:
     146, Loop not vectorized/parallelized: contains call
-pgcc -fast -DLAPLACE_FUNCTION -Minfo -acc  -o gsrd.out src/gsrd.c src/proc.c src/data.c src/util.c
-./gsrd.out "init/gsrd00000(512,512,2)F64.raw"
-gsrd00000(512,512,2)F64.raw -> v[3]=(512,512,2,)*64
-summarise() - 
-	   min, max, sum
-	A: 0.102954, 0.999453, 204016
-	B: 3.90765E-06, 1.53974, 34336.9
-	tE= 4.82348, 4.82348
-summarise() - 
-	   min, max, sum
-	A: 0.143244, 1, 178860
-	B: 1.12932E-14, 1.19297, 49508.6
-	tE= 5.03372, 9.85719
-summarise() - 
-	   min, max, sum
-	A: 0.140036, 1, 156537
-	B: 3.27352E-23, 1.2206, 62629.1
-	tE= 4.8286, 14.6858
-summarise() - 
-	   min, max, sum
-	A: 0.150161, 1, 135959
-	B: 1.12108E-27, 1.19108, 74585.1
-	tE= 4.82446, 19.5103
-summarise() - 
-	   min, max, sum
-	A: 0.147013, 0.999999, 121281
-	B: 7.75024E-25, 1.19056, 83149
-	tE= 4.82377, 24.334
-Test PASSED
+hostptr=0x60a130,stride=1,size=1,extent=-1,eltsize=104,name=pP,flags=0x200=present,async=-1,threadid=1
+Present table dump for device[1]: NVIDIA Tesla GPU 0, compute capability 5.2, threadid=1
+...empty...
+deleted block   device:0x704b80000 size:512 thread 1 
+deleted block   device:0x704b80200 size:512 thread 1 
+deleted block   device:0x704c80000 size:4096 thread 1 
+deleted block   device:0x704c81000 size:4096 thread 1 
+deleted block   device:0x704c82000 size:4096 thread 1 
+deleted block   device:0x705180000 size:4194304 thread 1 
+deleted block   device:0x704d80000 size:4194304 thread 1 
+FATAL ERROR: data in PRESENT clause was not found on device 1: name=pP host:0x60a130
+ file:/home/al/dev/GSRD/src/proc.c proc line:135
+make: *** [run] Error 1
