@@ -1,56 +1,86 @@
+
+CUDA Driver Version:           9010
+NVRM version:                  NVIDIA UNIX x86_64 Kernel Module  390.25  Wed Jan 24 20:02:43 PST 2018
+
+Device Number:                 0
+Device Name:                   GeForce GTX 970M
+Device Revision Number:        5.2
+Global Memory Size:            3171483648
+Number of Multiprocessors:     10
+Concurrent Copy and Execution: Yes
+Total Constant Memory:         65536
+Total Shared Memory per Block: 49152
+Registers per Block:           65536
+Warp Size:                     32
+Maximum Threads per Block:     1024
+Maximum Block Dimensions:      1024, 1024, 64
+Maximum Grid Dimensions:       2147483647 x 65535 x 65535
+Maximum Memory Pitch:          2147483647B
+Texture Alignment:             512B
+Clock Rate:                    1038 MHz
+Execution Timeout:             No
+Integrated Device:             No
+Can Map Host Memory:           Yes
+Compute Mode:                  default
+Concurrent Kernels:            Yes
+ECC Enabled:                   No
+Memory Clock Rate:             2505 MHz
+Memory Bus Width:              192 bits
+L2 Cache Size:                 1572864 bytes
+Max Threads Per SMP:           2048
+Async Engines:                 2
+Unified Addressing:            Yes
+Managed Memory:                Yes
+PGI Compiler Option:           -ta=tesla:cc50
 src/gsrd.c:
 summarise:
-    119, Loop unrolled 2 times
+    107, Loop unrolled 2 times
 main:
-    152, Loop not vectorized/parallelized: contains call
-    182, Loop not vectorized/parallelized: contains call
+    140, Loop not vectorized/parallelized: contains call
+    170, Loop not vectorized/parallelized: contains call
 src/proc.c:
-procBindData:
-    117, Generating copyin(pO[:1],pP[:1])
-    118, Generating copyin(pP->pKRA[:pP->n],pP->pKDB[:pP->n],pP->pKRR[:pP->n])
-    119, Generating copyin(pS[:pO->n])
-    120, Generating create(pR[:pO->n])
 proc:
-    135, Generating present(pO[:],pR[:pO->n],pP[:],pS[:pO->n])
-    136, Generating copyout(pR[:pO->n])
-    137, Loop not vectorized/parallelized: contains call
-    145, Accelerator kernel generated
+    139, Generating copyin(pP->pKRR[:pP->n],pP->pKRA[:pP->n],pP->pKDB[:pP->n],pO[:1])
+         Generating copy(pR[:pO->n])
+         Generating copyin(pS[:pO->n],pP[:1])
+    146, Loop not vectorized/parallelized: contains call
+    154, Accelerator kernel generated
          Generating Tesla code
-        147, #pragma acc loop gang /* blockIdx.x */
-        150, #pragma acc loop vector(128) /* threadIdx.x */
-    147, Loop not fused: no successor loop
-    150, Loop is parallelizable
+        156, #pragma acc loop gang /* blockIdx.x */
+        159, #pragma acc loop vector(128) /* threadIdx.x */
+    156, Loop not fused: no successor loop
+    159, Loop is parallelizable
          Loop not vectorized: data dependency
          FMA (fused multiply-add) instruction(s) generated
-    163, laplace2D2S9P inlined, size=18 (inline) file src/proc.c (24)
-    164, laplace2D2S9P inlined, size=18 (inline) file src/proc.c (24)
-    184, Accelerator kernel generated
+    172, laplace2D2S9P inlined, size=18 (inline) file src/proc.c (24)
+    173, laplace2D2S9P inlined, size=18 (inline) file src/proc.c (24)
+    193, Accelerator kernel generated
          Generating Tesla code
-        186, #pragma acc loop gang, vector(128) /* blockIdx.x threadIdx.x */
-    184, Generating implicit copy(wrap[:])
-    186, Loop not fused: no successor loop
+        195, #pragma acc loop gang, vector(128) /* blockIdx.x threadIdx.x */
+    193, Generating implicit copy(wrap[:])
+    195, Loop not fused: no successor loop
          Loop not vectorized: data dependency
          FMA (fused multiply-add) instruction(s) generated
-    195, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (33)
-    196, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (33)
     204, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (33)
     205, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (33)
-    222, Accelerator kernel generated
+    213, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (33)
+    214, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (33)
+    231, Accelerator kernel generated
          Generating Tesla code
-        224, #pragma acc loop gang, vector(128) /* blockIdx.x threadIdx.x */
-    222, Generating implicit copy(wrap[:])
-    224, Loop not fused: no successor loop
+        233, #pragma acc loop gang, vector(128) /* blockIdx.x threadIdx.x */
+    231, Generating implicit copy(wrap[:])
+    233, Loop not fused: no successor loop
          Loop not vectorized: data dependency
          FMA (fused multiply-add) instruction(s) generated
-    232, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (33)
-    233, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (33)
     241, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (33)
     242, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (33)
-    250, FMA (fused multiply-add) instruction(s) generated
-    254, proc1 inlined, size=51 (inline) file src/proc.c (41)
-    255, proc1 inlined, size=51 (inline) file src/proc.c (41)
-    261, proc1 inlined, size=51 (inline) file src/proc.c (41)
-    262, proc1 inlined, size=51 (inline) file src/proc.c (41)
+    250, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (33)
+    251, laplace2D4S9P inlined, size=17 (inline) file src/proc.c (33)
+    259, FMA (fused multiply-add) instruction(s) generated
+    263, proc1 inlined, size=51 (inline) file src/proc.c (41)
+    264, proc1 inlined, size=51 (inline) file src/proc.c (41)
+    270, proc1 inlined, size=51 (inline) file src/proc.c (41)
+    271, proc1 inlined, size=51 (inline) file src/proc.c (41)
 src/data.c:
 initParam:
      37, Loop unrolled 3 times (completely unrolled)
@@ -74,16 +104,39 @@ scanChZ:
     113, Loop not vectorized/parallelized: potential early exits
 scanArgs:
     146, Loop not vectorized/parallelized: contains call
-hostptr=0x6164b0,stride=1,size=1,extent=-1,eltsize=104,name=pP,flags=0x200=present,async=-1,threadid=1
-Present table dump for device[1]: NVIDIA Tesla GPU 0, compute capability 5.2, threadid=1
-...empty...
-deleted block   device:0x704b80000 size:512 thread 1 
-deleted block   device:0x704b80200 size:512 thread 1 
-deleted block   device:0x704c80000 size:4096 thread 1 
-deleted block   device:0x704c81000 size:4096 thread 1 
-deleted block   device:0x704c82000 size:4096 thread 1 
-deleted block   device:0x705180000 size:4194304 thread 1 
-deleted block   device:0x704d80000 size:4194304 thread 1 
-FATAL ERROR: data in PRESENT clause was not found on device 1: name=pP host:0x6164b0
- file:/home/al/dev/GSRD/src/proc.c proc line:135
-make: *** [run] Error 1
+pgcc -fast -DLAPLACE_FUNCTION -Minfo=all -acc -ta=host,nvidia:cc50  -o gsrd.out src/gsrd.c src/proc.c src/data.c src/util.c
+./gsrd.out "init/gsrd00000(1024,1024,2)F64.raw"
+gsrd00000(1024,1024,2)F64.raw -> v[3]=(1024,1024,2,)*64
+procInitAcc() - nNV=1, nH=1 (other=0)
+initCtx() - 33579008 bytes @ 0x7fd2a17f8010
+summarise() - 
+	   min, max, sum
+	A: 0, 1, 524770
+	B: 0, 1, 524764
+	tE= 2.87114, 2.87114
+saveFrame() - raw/gsrd01000(1024,1024,2)F64.raw 0x7fd2a17fe010 0 bytes
+summarise() - 
+	   min, max, sum
+	A: 0, 1, 524769
+	B: 0, 2.42235, 524772
+	tE= 2.85665, 5.72779
+saveFrame() - raw/gsrd02000(1024,1024,2)F64.raw 0x7fd2a17fe010 0 bytes
+summarise() - 
+	   min, max, sum
+	A: 0, 1, 524769
+	B: 0, 2.42788, 524772
+	tE= 2.85801, 8.5858
+saveFrame() - raw/gsrd03000(1024,1024,2)F64.raw 0x7fd2a17fe010 0 bytes
+summarise() - 
+	   min, max, sum
+	A: 0, 1, 524769
+	B: 0, 2.40399, 524772
+	tE= 2.85833, 11.4441
+saveFrame() - raw/gsrd04000(1024,1024,2)F64.raw 0x7fd2a17fe010 0 bytes
+summarise() - 
+	   min, max, sum
+	A: 0, 1, 524769
+	B: 0, 2.40415, 524772
+	tE= 2.85873, 14.3029
+saveFrame() - raw/gsrd05000(1024,1024,2)F64.raw 0x7fd2a17fe010 0 bytes
+Test PASSED
