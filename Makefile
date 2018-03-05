@@ -13,7 +13,7 @@
 
 CC       = pgcc -fast
 CCFLAGS  = -DLAPLACE_FUNCTION
-ACCFLAGS = -Minfo=all -acc -ta=host,nvidia:8.0 $(OPT)
+ACCFLAGS = -Minfo=all -acc -ta=host,nvidia:cc50 $(OPT)
 # -ta=tesla:managed -> malloc: call to cuMemAllocManaged returned error 3: Not initialized
 
 OBJ	= o
@@ -42,7 +42,7 @@ build: $(SRC)
 	$(CC) $(CCFLAGS) $(ACCFLAGS) -o gsrd.$(EXE) $(SRC)
 
 run: gsrd.$(EXE)
-	$(RUN) ./gsrd.$(EXE) "init/gsrd00000(512,512,2)F64.raw"
+	$(RUN) ./gsrd.$(EXE) "init/gsrd00000(1024,1024,2)F64.raw"
 
 verify:
 
