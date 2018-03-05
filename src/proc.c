@@ -139,7 +139,7 @@ U32 proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, c
    #pragma acc data copyin( pP[0:1], pO[0:1] ) \
       copyin( pP->pKRR[0:pP->n], pP->pKRA[0:pP->n], pP->pKDB[0:pP->n] ) \
       copyin( pS[0:pO->n] ) \
-      copy( pR[0:pO->n] )
+      present_or_create( pR[0:pO->n] )
    {
       //#pragma acc data present( pP, pO, pS[0:pO->n], pR[0:pO->n]  )
       //#pragma acc data copyout( pR[0:pO->n] )
@@ -147,7 +147,6 @@ U32 proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, c
       {
 	 // Process according to memory access pattern (boundary wrap)
 	 // First the interior
-	 // private( pR[0:pO->n] )
 #ifdef ACC_AUTO
          #pragma acc kernels loop
 #else
@@ -155,7 +154,7 @@ U32 proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, c
 #endif
          for ( y= 1; y < end.y; ++y )
          {
-            #pragma acc loop vector	// gang, vector(256)
+            #pragma acc loop vector
             for ( x= 1; x < end.x; ++x )
             {
                const Index i= y * pO->stride[1] + x * pO->stride[0];
@@ -270,8 +269,20 @@ U32 proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, c
          proc1(pR, pS, pO->stride[2]-pO->stride[1], pO->stride[3], wrap+0, pP);
          proc1(pR, pS, pO->stride[2]-pO->stride[0], pO->stride[3], wrap+2, pP);
 #endif
-         if (iter < iterMax) { Scalar *pT= (Scalar*)pS; pS= pR; pR= pT; } // SWAP()
+         if (iter < iterMax)
+         { Scalar *pT= (Scalar*)pS; pS= pR; pR= pT; } // SWAP()
+         else
+         {
+            Scalar sum1=0, sum2= 0;
+            #pragma data updateout( pR[0:pO->n] )
+            //pragma acc data update host( pR[0:pO->n] )
+     	    #pragma acc loop reduction(+:sum1)
+      	    for ( size_t i= 0; i < pO->n; ++i ) { const Scalar r= pR[i]; sum1+= r; sum2+= r * r; }
+            printf("proc() - sum:%G,%G\n", sum1, sum2);
+         }
       } // for iter < iterMax
-   }
+      //pragma acc data update host( pR[0:pO->n] )
+      //{ ; }
+   } // ... acc data ...
    return(iter);
 } // proc

@@ -79,10 +79,14 @@ size_t saveFrame (const Scalar * const pB, const V2U32 def, const U32 iNum)
    char name[64];
    const size_t n= def.x * def.y * 2;
    size_t r= 0;
+   int t= 3;
    if (n > 0)
    {
       snprintf(name, sizeof(name)-1, "raw/gsrd%05lu(%lu,%lu,2)F64.raw", iNum, def.x, def.y);
-      r= saveBuff(pB, name, sizeof(Scalar) * n);
+      do
+      {
+         r= saveBuff(pB, name, sizeof(Scalar) * n);
+      } while (0); // ((r <= 0) && (t-- > 0) && sleep(1));
       //if (r > 0)
       {
          printf("saveFrame() - %s %p %zu bytes\n", name, pB, r);
@@ -172,6 +176,7 @@ int main ( int argc, char* argv[] )
 
          iR= pPI->maxIter - gCtx.i;
          if (iM > iR) { iM= iR; }
+	 iM+= 1 - (iM & 1); // make higher odd
 
          GETTIME(&t1);
          gCtx.i+= proc(gCtx.hb.pAB[(k^0x1)], gCtx.hb.pAB[k], &(gCtx.org), &(gCtx.pv), iM);
