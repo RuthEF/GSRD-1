@@ -13,7 +13,7 @@
 
 CC       = pgcc -fast
 CCFLAGS  = -DLAPLACE_FUNCTION
-ACCFLAGS = -Minfo=all -acc $(OPT)
+ACCFLAGS = -Minfo=all -acc -ta=host,nvidia:8.0 $(OPT)
 # -ta=tesla:managed -> malloc: call to cuMemAllocManaged returned error 3: Not initialized
 
 OBJ	= o
