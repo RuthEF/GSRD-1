@@ -160,16 +160,17 @@ int scanArgs (ArgInfo *pAI, const char * const a[], int nA)
    while (nA-- > 0)
    {
       pCh= a[nA];
-      if ('-' != *pCh) { nV+= ( scanDFI(&(pAI->dfi), pCh) > 0 ); }
+      if ('-' != pCh[0]) { nV+= ( scanDFI(&(pAI->dfi), pCh) > 0 ); }
       else
       {
-         char v, c= *++pCh;
-         int n;
-         pCh+= contigCharSetN(pCh, 2, ":=", 2);
-         v= toupper(*pCh);
+         char c, v=0;
+         int n= contigCharSetN(pCh+0, 2, "-", 2);
+         c= pCh[n++];
+         n+= contigCharSetN(pCh+n, 2, ":=", 2);
          switch(toupper(c))
          {
             case 'A' :
+               v= toupper( pCh[n] );
                if ('H' == v) { pAI->proc.flags|= PROC_FLAG_HOST; }
                if ('G' == v) { pAI->proc.flags|= PROC_FLAG_GPU; }
                if ('A' == v) { pAI->proc.flags|= PROC_FLAG_HOST|PROC_FLAG_GPU; }
@@ -177,11 +178,9 @@ int scanArgs (ArgInfo *pAI, const char * const a[], int nA)
                break;
                
             case 'I' :
-               n= scanZ(&(pAI->proc.maxIter), pCh);
-               pCh+= n;
-               pCh+= contigCharSetN(pCh, 2, ",;:", 3);
-               n= scanZ(&(pAI->proc.subIter), pCh);
-               if (pAI->proc.subIter > pAI->proc.maxIter) SWAP(size_t, pAI->proc.subIter, pAI->proc.maxIter);
+               n+= scanZ(&(pAI->proc.maxIter), pCh+n);
+               n+= contigCharSetN(pCh+n, 2, ",;:", 3);
+               n+= scanZ(&(pAI->proc.subIter), pCh+n);
                ++nV;
                break;
           
@@ -189,9 +188,10 @@ int scanArgs (ArgInfo *pAI, const char * const a[], int nA)
          }
       }
    }
-   if (0 == pAI->proc.flags) { pAI->proc.flags= PROC_FLAG_HOST|PROC_FLAG_GPU; }
+   //if (0 == pAI->proc.flags) { pAI->proc.flags= PROC_FLAG_HOST|PROC_FLAG_GPU; }
    if (0 == pAI->proc.maxIter) { pAI->proc.maxIter= 5000; }
    if (0 == pAI->proc.subIter) { pAI->proc.subIter= 1000; }
+   if (pAI->proc.subIter > pAI->proc.maxIter) SWAP(size_t, pAI->proc.subIter, pAI->proc.maxIter);
    return(nV);
 } // scanArgs
 
