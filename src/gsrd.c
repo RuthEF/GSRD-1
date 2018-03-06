@@ -149,11 +149,12 @@ int main ( int argc, char* argv[] )
          printf(")*%u\n", ai.dfi.elemBits);
          if (ai.dfi.bytes != ((bits+7) >> 3)) { printf("WARNING: %zu != %zu", ai.dfi.bytes, bits); }
       }
+      printf("proc: f=0x%zX, m=%zu, s=%zu\n", ai.proc.flags, ai.proc.maxIter, ai.proc.subIter);
    }
 
    const DataFileInfo *pDFI= &(ai.dfi);
    const ProcInfo *pPI= &(ai.proc);
-   if (procInitAcc() && initCtx(&gCtx, pDFI->v[0], pDFI->v[1], 4))
+   if (procInitAcc(pPI->flags) && initCtx(&gCtx, pDFI->v[0], pDFI->v[1], 4))
    {
       size_t i= 0, iM= pPI->maxIter, iR;
       timestruct t1, t2;

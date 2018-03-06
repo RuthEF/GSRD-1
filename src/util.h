@@ -15,8 +15,8 @@
 #pragma clang diagnostic ignored "-Wmissing-field-initializers"
 
 
-#define PROC_FLAG_HOST  (1<<0)
-#define PROC_FLAG_GPU   (1<<1)
+#define PROC_FLAG_ACCHOST  (1<<0)
+#define PROC_FLAG_ACCGPU   (1<<1)
 
 #ifndef SWAP
 #define SWAP(Type,a,b) { Type tmp= (a); (a)= (b); (b)= tmp; }

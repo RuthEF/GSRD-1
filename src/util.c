@@ -171,9 +171,10 @@ int scanArgs (ArgInfo *pAI, const char * const a[], int nA)
          {
             case 'A' :
                v= toupper( pCh[n] );
-               if ('H' == v) { pAI->proc.flags|= PROC_FLAG_HOST; }
-               if ('G' == v) { pAI->proc.flags|= PROC_FLAG_GPU; }
-               if ('A' == v) { pAI->proc.flags|= PROC_FLAG_HOST|PROC_FLAG_GPU; }
+               if ('H' == v) { pAI->proc.flags|= PROC_FLAG_ACCHOST; }
+               if ('G' == v) { pAI->proc.flags|= PROC_FLAG_ACCGPU; }
+               if ('A' == v) { pAI->proc.flags|= PROC_FLAG_ACCHOST|PROC_FLAG_ACCGPU; }
+               if ('N' == v) { pAI->proc.flags&= ~(PROC_FLAG_ACCHOST|PROC_FLAG_ACCGPU); }
                ++nV;
                break;
                
