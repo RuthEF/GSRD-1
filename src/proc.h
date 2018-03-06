@@ -7,7 +7,7 @@
 
 /***/
 
-extern Bool32 procInitAcc (void);
+extern Bool32 procInitAcc (size_t f);
 
 extern void procBindData (const HostBuff * const pHB, const ParamVal * const pP, const ImgOrg * const pO, const U32 iS);
 
