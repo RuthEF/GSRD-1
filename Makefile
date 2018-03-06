@@ -42,7 +42,7 @@ build: $(SRC)
 	$(CC) $(CCFLAGS) $(ACCFLAGS) -o gsrd.$(EXE) $(SRC)
 
 run: gsrd.$(EXE)
-	$(RUN) ./gsrd.$(EXE) "init/gsrd00000(1024,1024,2)F64.raw"
+	$(RUN) ./gsrd.$(EXE) "init/gsrd00000(1024,1024,2)F64.raw" -A:A -I=2000,500
 
 verify:
 
