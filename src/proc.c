@@ -93,28 +93,27 @@ extern void acc_wait_all_async( __PGI_LLONG async );
 extern int acc_on_device( acc_device_t devtype );
 extern void acc_free(void*); */
 
-Bool32 procInitAcc (void) // arg param ?
+Bool32 procInitAcc (size_t f) // arg param ?
 {
+   int nInit= (0 == (f & (PROC_FLAG_ACCGPU|PROC_FLAG_ACCHOST)));
 #ifdef OPEN_ACC
    int nNV= acc_get_num_devices( acc_device_nvidia );
    int nH= acc_get_num_devices( acc_device_host );
    int nNH= acc_get_num_devices( acc_device_not_host );
-   int nInit= 0;
    
    printf("procInitAcc() - nNV=%d, nH=%d (other=%d)\n", nNV, nH, nNH - nNV);
-   if (nNV > 0)
+   if (nNV > 0) && (f & PROC_FLAG_ACCGPU))
    {
       acc_init( acc_device_nvidia ); // get_err?
       ++nInit;
    }
-   else if (nH > 0)
+   else if ((nH > 0) && (f & PROC_FLAG_ACCHOST))
    {
       acc_init( acc_device_host );
       ++nInit;
    }
-   return(nInit > 0);
 #endif
-   return(FALSE);
+   return(nInit > 0);
 } // procInitAcc
 
 void procBindData (const HostBuff * const pHB, const ParamVal * const pP, const ImgOrg * const pO, const U32 iS)
