@@ -136,7 +136,7 @@ int main ( int argc, char* argv[] )
 
    if (argc > 1)
    {
-      n= scanArgs(&ai, argv+1, argc-1);
+      n= scanArgs(&ai, (const char **)(argv+1), argc-1);
       if (ai.dfi.nV > 0)
       {
          size_t bits= ai.dfi.elemBits;
@@ -176,7 +176,7 @@ int main ( int argc, char* argv[] )
 
          iR= pPI->maxIter - gCtx.i;
          if (iM > iR) { iM= iR; }
-	 iM+= 1 - (iM & 1); // make higher odd
+         //iM+= 1 - (iM & 1); // make higher odd
 
          GETTIME(&t1);
          gCtx.i+= proc(gCtx.hb.pAB[(k^0x1)], gCtx.hb.pAB[k], &(gCtx.org), &(gCtx.pv), iM);

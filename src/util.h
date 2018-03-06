@@ -11,6 +11,17 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+// General compiler tweaks
+#pragma clang diagnostic ignored "-Wmissing-field-initializers"
+
+
+#define PROC_FLAG_HOST  (1<<0)
+#define PROC_FLAG_GPU   (1<<1)
+
+#ifndef SWAP
+#define SWAP(Type,a,b) { Type tmp= (a); (a)= (b); (b)= tmp; }
+#endif
+
 #ifndef MAX
 #define MAX(a,b) (a)>(b)?(a):(b)
 #endif
@@ -53,7 +64,7 @@ typedef struct
 
 typedef struct
 {
-   size_t   maxIter, subIter;
+   size_t   flags, maxIter, subIter;
 } ProcInfo;
 
 typedef struct

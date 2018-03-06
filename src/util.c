@@ -120,10 +120,9 @@ U8 scanChZ (const char *s, char c)
    return(0);
 } // scanChZ
 
-int scanDFI (DataFileInfo * pDFI, const char * const path)
+size_t scanDFI (DataFileInfo * pDFI, const char * const path)
 {
    size_t bytes= fileSize(path);
-   //FILE *hF= fopen(pCh,"r"); if (hF) { r= fread(b, 1, 8, hF); fclose(hF); }
    if (bytes > 0)
    {
       pDFI->path=  path;
@@ -134,26 +133,66 @@ int scanDFI (DataFileInfo * pDFI, const char * const path)
       pDFI->elemBits= scanChZ(p, 'f');
       //if (0 == pDFI->elemBits) { pDFI->elemBits= 64; }
    }
-   return(0);
+   return(bytes);
 } // scanDFI
+
+int contigCharSetN (const char s[], const int maxS, const char t[], const int maxT)
+{
+   int n= 0;
+   while ((n < maxS) && s[n])
+   {
+      int i= 0;
+      while ((i < maxT) && t[i] && (s[n] != t[i])) { ++i; }
+      if (s[n] != t[i]) { return(n); }
+      // else
+      ++n;
+   }
+   return(n);
+} // contigCharSetN
 
 int scanArgs (ArgInfo *pAI, const char * const a[], int nA)
 {
    const char *pCh;
    ArgInfo tmpAI;
-   int n= 0;
+   int nV= 0;
+   
    if (NULL == pAI) { pAI= &tmpAI; }
    while (nA-- > 0)
    {
       pCh= a[nA];
-      if ('-' != pCh[0])
+      if ('-' != *pCh) { nV+= ( scanDFI(&(pAI->dfi), pCh) > 0 ); }
+      else
       {
-         n+= scanDFI(&(pAI->dfi), pCh);
+         char v, c= *++pCh;
+         int n;
+         pCh+= contigCharSetN(pCh, 2, ":=", 2);
+         v= toupper(*pCh);
+         switch(toupper(c))
+         {
+            case 'A' :
+               if ('H' == v) { pAI->proc.flags|= PROC_FLAG_HOST; }
+               if ('G' == v) { pAI->proc.flags|= PROC_FLAG_GPU; }
+               if ('A' == v) { pAI->proc.flags|= PROC_FLAG_HOST|PROC_FLAG_GPU; }
+               ++nV;
+               break;
+               
+            case 'I' :
+               n= scanZ(&(pAI->proc.maxIter), pCh);
+               pCh+= n;
+               pCh+= contigCharSetN(pCh, 2, ",;:", 3);
+               n= scanZ(&(pAI->proc.subIter), pCh);
+               if (pAI->proc.subIter > pAI->proc.maxIter) SWAP(size_t, pAI->proc.subIter, pAI->proc.maxIter);
+               ++nV;
+               break;
+          
+            default : printf("scanArgs() - unknown flag -%c\n", c);
+         }
       }
    }
+   if (0 == pAI->proc.flags) { pAI->proc.flags= PROC_FLAG_HOST|PROC_FLAG_GPU; }
    if (0 == pAI->proc.maxIter) { pAI->proc.maxIter= 5000; }
    if (0 == pAI->proc.subIter) { pAI->proc.subIter= 1000; }
-   return(n);
+   return(nV);
 } // scanArgs
 
 #ifdef UTIL_TEST

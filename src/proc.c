@@ -1,26 +1,30 @@
 #include "proc.h"
 
-#ifdef __PGI
-//OPENACC
+#ifdef __PGI   // HACK
+#ifndef OPEN_ACC
+#define OPEN_ACC
+#endif
 #include <openacc.h>
 //#include <assert.h>
 //#include <accelmath.h>
+
+#define INLINE inline
 #endif
 
-#ifdef OPENACC
-flubber
+#ifndef INLINE
+#define INLINE
 #endif
 
 
 /***/
-
+/*
 #define LAPLACE2D2S9P(pS,i,sv,k) ( (pS)[0] * k[0] + \
    ( (pS)[ i - sv.x ] + (pS)[ i + sv.x ] + (pS)[ i - sv.y ] + (pS)[ i + sv.y ] ) * k[1] + \
    ( (pS)[ i - sv.x - sv.y ] + (pS)[ i + sv.x - sv.y ] + (pS)[ i + sv.y - sv.x ] + (pS)[ i + sv.x + sv.y ] ) * k[2] )
-
+*/
 // Stride 0,1 -> +X +Y
 //#pragma acc routine
-inline Scalar laplace2D2S9P (const Scalar * const pS, const Stride s[2], const Scalar k[3])
+INLINE Scalar laplace2D2S9P (const Scalar * const pS, const Stride s[2], const Scalar k[3])
 {
    return( pS[0] * k[0] +
           (pS[-s[0]] + pS[s[0]] + pS[-s[1]] + pS[s[1]]) * k[1] +
@@ -29,7 +33,7 @@ inline Scalar laplace2D2S9P (const Scalar * const pS, const Stride s[2], const S
 
 // Stride 0..3 -> +-X +-Y
 //#pragma acc routine vector
-inline Scalar laplace2D4S9P (const Scalar * const pS, const Stride s[4], const Scalar k[3])
+INLINE Scalar laplace2D4S9P (const Scalar * const pS, const Stride s[4], const Scalar k[3])
 {
    return( pS[0] * k[0] +
            (pS[ s[0] ] + pS[ s[1] ] + pS[ s[2] ] + pS[ s[3] ]) * k[1] + 
@@ -37,7 +41,7 @@ inline Scalar laplace2D4S9P (const Scalar * const pS, const Stride s[4], const S
 } // laplace2D4S9P
 
 //#pragma acc routine vector
-inline void proc1 (Scalar * const pR, const Scalar * const pI, const int i, const int j, const Stride wrap[4], const ParamVal * const pP)
+INLINE void proc1 (Scalar * const pR, const Scalar * const pI, const int i, const int j, const Stride wrap[4], const ParamVal * const pP)
 {
    const Scalar * const pA= pI+i, a= *pA;
    const Scalar * const pB= pI+i+j, b= *pB;
@@ -91,22 +95,26 @@ extern void acc_free(void*); */
 
 Bool32 procInitAcc (void) // arg param ?
 {
+#ifdef OPEN_ACC
    int nNV= acc_get_num_devices( acc_device_nvidia );
    int nH= acc_get_num_devices( acc_device_host );
    int nNH= acc_get_num_devices( acc_device_not_host );
-
+   int nInit= 0;
+   
    printf("procInitAcc() - nNV=%d, nH=%d (other=%d)\n", nNV, nH, nNH - nNV);
    if (nNV > 0)
    {
-      acc_init( acc_device_nvidia );
+      acc_init( acc_device_nvidia ); // get_err?
+      ++nInit;
    }
    else if (nH > 0)
    {
       acc_init( acc_device_host );
+      ++nInit;
    }
-   else { return(FALSE); }
-   // Default assume success
-   return(TRUE);
+   return(nInit > 0);
+#endif
+   return(FALSE);
 } // procInitAcc
 
 void procBindData (const HostBuff * const pHB, const ParamVal * const pP, const ImgOrg * const pO, const U32 iS)
@@ -129,9 +137,6 @@ void procBindData (const HostBuff * const pHB, const ParamVal * const pP, const 
 // b+= laplace9P(b, KLB0) + _rab2 - mKDB * b
 U32 proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP, const U32 iterMax)
 {
-#ifndef LAPLACE_FUNCTION
-   const SV2 sv2={pO->stride[0],pO->stride[1]};
-#endif
    Stride wrap[6]; // LRBT strides for boundary wrap
    const V2U32 end= {pO->def.x-1, pO->def.y-1};
    U32 x, y, iter= 0;
@@ -147,11 +152,7 @@ U32 proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, c
       {
 	 // Process according to memory access pattern (boundary wrap)
 	 // First the interior
-#ifdef ACC_AUTO
-         #pragma acc kernels loop
-#else
          #pragma acc parallel loop
-#endif
          for ( y= 1; y < end.y; ++y )
          {
             #pragma acc loop vector
@@ -164,13 +165,8 @@ U32 proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, c
                const Scalar rab2= pP->pKRR[x] * a * b * b;
                //const Scalar ar= KRA0 * (1 - a);
                //const Scalar bd= KDB0 * b;
-#ifndef LAPLACE_FUNCTION
-               pR[i]= a + LAPLACE2D2S9P(pS, i, sv2, pP->kL.a) - rab2 + pP->pKRA[x] * (1 - a);
-               pR[j]= b + LAPLACE2D2S9P(pS, j, sv2, pP->kL.b) + rab2 - pP->pKDB[y] * b;
-#else
                pR[i]= a + laplace2D2S9P(pS+i, pO->stride, pP->kL.a) - rab2 + pP->pKRA[x] * (1 - a);
                pR[j]= b + laplace2D2S9P(pS+j, pO->stride, pP->kL.b) + rab2 - pP->pKDB[y] * b;
-#endif
             }
          }
 
@@ -186,11 +182,7 @@ U32 proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, c
          wrap[4]= pO->stride[1] - pO->stride[2]; wrap[5]= -pO->stride[1];
 
          // Horizontal top & bottom
-#ifdef ACC_AUTO
-         #pragma acc kernels loop
-#else
          #pragma acc parallel loop
-#endif
          for ( x= 1; x < end.x; ++x )
          {
             const Index i1= x * pO->stride[0];
@@ -224,11 +216,7 @@ U32 proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, c
          wrap[4]= -pO->stride[0]; wrap[5]= pO->stride[0] - pO->stride[1];
 
          // left & right
-#ifdef ACC_AUTO
-         #pragma acc kernels loop
-#else
          #pragma acc parallel loop
-#endif
          for ( y= 1; y < end.y; ++y )
          {
             Scalar a, b, rab2;
@@ -276,8 +264,8 @@ U32 proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, c
             Scalar sum1=0, sum2= 0;
             #pragma data updateout( pR[0:pO->n] )
             //pragma acc data update host( pR[0:pO->n] )
-     	    #pragma acc loop reduction(+:sum1)
-      	    for ( size_t i= 0; i < pO->n; ++i ) { const Scalar r= pR[i]; sum1+= r; sum2+= r * r; }
+            #pragma acc loop reduction(+:sum1)
+            for ( size_t i= 0; i < pO->n; ++i ) { const Scalar r= pR[i]; sum1+= r; sum2+= r * r; }
             printf("proc() - sum:%G,%G\n", sum1, sum2);
          }
       } // for iter < iterMax
