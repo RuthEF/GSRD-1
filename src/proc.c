@@ -258,33 +258,30 @@ U32 proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, c
 #endif
          if (iter < iterMax)
          { Scalar *pT= (Scalar*)pS; pS= pR; pR= pT; } // SWAP()
-         else
-         {
-            Scalar sum1=0, sum2= 0;
-            #pragma data updateout( pR[0:pO->n] )
-            //pragma acc data update host( pR[0:pO->n] )
-            #pragma acc loop reduction(+:sum1)
-            for ( size_t i= 0; i < pO->n; ++i ) { const Scalar r= pR[i]; sum1+= r; sum2+= r * r; }
-            printf("proc() - sum:%G,%G\n", sum1, sum2);
-         }
       } // for iter < iterMax
-      //pragma acc data update host( pR[0:pO->n] )
-      //{ ; }
-   } // ... acc data ...
+   } // ... acc data ..
+   //pragma acc data update host( pR[0:pO->n] )
+   #pragma data updateout( pR[0:pO->n] )
+   {
+      Scalar sum1=0, sum2= 0;
+      #pragma acc loop reduction(+:sum1)
+      for ( size_t i= 0; i < pO->n; ++i ) { const Scalar r= pR[i]; sum1+= r; sum2+= r * r; }
+      printf("proc() - sum:%G,%G\n", sum1, sum2);
+   }
    return(iter);
 } // proc
 
 void procSummarise (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * const pO)
-#pragma acc region
-{  // HACKY ignores interleaving/padding
+{
    const size_t n= pO->def.x * pO->def.y;
-   const Scalar * const pA= pAB;
-   const Scalar * const pB= pAB + pO->stride[3];
+   const Scalar * restrict pA= pAB;
+   const Scalar * restrict pB= pAB + pO->stride[3];
    BlockStat s;
    
    initFS(&(s.a), pA);
    initFS(&(s.b), pB);
    
+   #pragma acc parallel loop
    for (size_t i=1; i<n; i++)
    {
       const Index j= i * pO->stride[0];
