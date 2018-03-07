@@ -13,8 +13,6 @@
 
 //typedef float      Scalar;
 typedef double       Scalar;
-typedef double       SSStat;
-//typedef long double  SSStat; // not parallelisable with SSE or GPU
 typedef signed long  Stride;
 typedef signed long  Index;
 

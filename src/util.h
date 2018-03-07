@@ -40,6 +40,9 @@ typedef unsigned char  U8;
 typedef unsigned short U16;
 typedef unsigned long  U32;
 
+typedef double SSStat; // Scalar Sum Stat
+//typedef long double  SSStat; // not parallelisable with SSE or GPU
+
 typedef int Bool32;
 
 typedef struct
