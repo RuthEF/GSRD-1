@@ -1,25 +1,21 @@
+# GSRD makefile
 
-################################################################################
-#
-# Copyright (c) 2017, NVIDIA Corporation.  All rights reserved.
-#
-# Please refer to the NVIDIA end user license agreement (EULA) associated
-# with this source code for terms and conditions that govern your use of
-# this software. Any use, reproduction, disclosure, or distribution of
-# this software and related documentation outside the terms of the EULA
-# is strictly prohibited.
-#
-################################################################################
-
-CC       = pgcc -fast
-CCFLAGS  = -DLAPLACE_FUNCTION
-ACCFLAGS = -Minfo=all -acc -ta=host,nvidia:cc50 $(OPT)
+# PGI C compiler is default
+CC       = pgcc -c11 -Minfo=all
+CCFLAGS  =
+#-DLAPLACE_FUNCTION
+# PGI Acceleration options
+ACCFLAGS = -fast -acc
+MAFLAGS  = $(ACCFLAGS) -ta=multicore $(OPT)
+GAFLAGS  = $(ACCFLAGS) -ta=nvidia:cc50 $(OPT)
+MGAFLAGS = $(ACCFLAGS) -ta=multicore,nvidia:cc50 $(OPT)
 # -ta=tesla:managed -> malloc: call to cuMemAllocManaged returned error 3: Not initialized
 
-OBJ	= o
-EXE	= out
-RUN     =
+OBJ = o
+EXE = out
+RUN =
 
+# Other environments, compilers, options...
 UNAME := $(shell uname -a)
 ifeq ($(findstring Darwin, $(UNAME)), Darwin)
 CC       = clang -std=c11 -W
@@ -30,16 +26,31 @@ OBJ	= obj
 EXE	= exe
 endif
 
-all: build run verify
+# top level targets
+all:     build run verify
+host:    acchost run verify
+gpu:     accgpu run verify
+hostgpu: acchostgpu run verify
 
 SRC_DIR=src
+OBJ_DIR=obj
 
 SL= gsrd.c proc.c data.c util.c
 SRC:= $(SL:%.c=$(SRC_DIR)/%.c)
+OBJ:= $(SL=:%.c=$(OBJ_DIR)/%.o)
 
-
+# Default build - no acceleration
 build: $(SRC)
-	$(CC) $(CCFLAGS) $(ACCFLAGS) -o gsrd.$(EXE) $(SRC)
+	$(CC) $(CCFLAGS) -o gsrd.$(EXE) $(SRC)
+
+acchost: $(SRC)
+	$(CC) $(CCFLAGS) $(MAFLAGS) -o gsrd.$(EXE) $(SRC)
+
+accgpu: $(SRC)
+	$(CC) $(CCFLAGS) $(GAFLAGS) -o gsrd.$(EXE) $(SRC)
+
+acchostgpu: $(SRC)
+	$(CC) $(CCFLAGS) $(MGAFLAGS) -o gsrd.$(EXE) $(SRC)
 
 run: gsrd.$(EXE)
 	$(RUN) ./gsrd.$(EXE) "init/gsrd00000(1024,1024,2)F64.raw" -A:A -I=2000,500

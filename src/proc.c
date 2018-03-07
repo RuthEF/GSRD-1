@@ -102,7 +102,7 @@ Bool32 procInitAcc (size_t f) // arg param ?
    int nNH= acc_get_num_devices( acc_device_not_host );
    
    printf("procInitAcc() - nNV=%d, nH=%d (other=%d)\n", nNV, nH, nNH - nNV);
-   if (nNV > 0) && (f & PROC_FLAG_ACCGPU))
+   if ((nNV > 0) && (f & PROC_FLAG_ACCGPU))
    {
       acc_init( acc_device_nvidia ); // get_err?
       ++nInit;
