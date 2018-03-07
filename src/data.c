@@ -95,7 +95,7 @@ void printFS (const char *pHdr, const FieldStat * const pFS, const char *pFtr)
    if (pHdr && pHdr[0]) { printf("%s", pHdr); }
    if (pFS)
    {  const char *fsFmtStr= "%G, %G, %G, %G";
-      if (sizeof(SStat) > sizeof(double)) { fsFmtStr= "%LG, %LG, %LG, %LG"; }
+      if (sizeof(SSStat) > sizeof(double)) { fsFmtStr= "%LG, %LG, %LG, %LG"; }
       printf(fsFmtStr, pFS->min, pFS->max, pFS->sum1, pFS->sum2);
    }
    if (pFtr && pFtr[0]) { printf("%s", pFtr); }

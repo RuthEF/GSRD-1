@@ -11,9 +11,10 @@
 #define KLB0 (Scalar)0.025
 
 
-//typedef float Scalar;
-typedef long double  SStat;
+//typedef float      Scalar;
 typedef double       Scalar;
+typedef double       SSStat;
+//typedef long double  SSStat; // not parallelisable with SSE or GPU
 typedef signed long  Stride;
 typedef signed long  Index;
 
@@ -56,7 +57,8 @@ typedef struct
 
 typedef struct
 {
-   SStat min, max, sum1, sum2;
+   Scalar min, max;
+   SSStat sum1, sum2;
 } FieldStat;
 
 typedef struct
