@@ -274,24 +274,23 @@ U32 proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, c
 void procSummarise (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * const pO)
 {
    const size_t n= pO->def.x * pO->def.y;
-   const Scalar * restrict pA= pAB;
-   const Scalar * restrict pB= pAB + pO->stride[3];
    BlockStat s;
    
-   initFS(&(s.a), pA);
-   initFS(&(s.b), pB);
-   #pragma acc data present( pAB[0:pO->n] )
+   initFS(&(s.a), pAB);
+   initFS(&(s.b), pAB + pO->stride[3]);
+   #pragma acc data copy(s) present( pAB[0:pO->n] ) present(pO)
    {
       #pragma acc parallel loop
       for (size_t i=1; i<n; i++)
       {
          const Index j= i * pO->stride[0];
-         const Scalar a= pA[j];
+         const Index k= j + pO->stride[3];
+         const Scalar a= pAB[j];
          if (a < s.a.min) { s.a.min= a; }
          if (a > s.a.max) { s.a.max= a; }
          s.a.sum1+= a;
          s.a.sum2+= a * a;
-         const Scalar b= pB[j];
+         const Scalar b= pAB[k];
          if (b < s.b.min) { s.b.min= b; }
          if (b > s.b.max) { s.b.max= b; }
          s.b.sum1+= b;
