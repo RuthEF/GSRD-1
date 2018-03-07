@@ -6,9 +6,9 @@ CCFLAGS  =
 #-DLAPLACE_FUNCTION
 # PGI Acceleration options
 ACCFLAGS = -fast -acc
-HAFLAGS  = $(ACCFLAGS) -ta=host $(OPT)
+MAFLAGS  = $(ACCFLAGS) -ta=multicore $(OPT)
 GAFLAGS  = $(ACCFLAGS) -ta=nvidia:cc50 $(OPT)
-HGAFLAGS = $(ACCFLAGS) -ta=host,nvidia:cc50 $(OPT)
+MGAFLAGS = $(ACCFLAGS) -ta=multicore,nvidia:cc50 $(OPT)
 # -ta=tesla:managed -> malloc: call to cuMemAllocManaged returned error 3: Not initialized
 
 OBJ = o
@@ -44,13 +44,13 @@ build: $(SRC)
 	$(CC) $(CCFLAGS) -o gsrd.$(EXE) $(SRC)
 
 acchost: $(SRC)
-	$(CC) $(CCFLAGS) $(HAFLAGS) -o gsrd.$(EXE) $(SRC)
+	$(CC) $(CCFLAGS) $(MAFLAGS) -o gsrd.$(EXE) $(SRC)
 
 accgpu: $(SRC)
 	$(CC) $(CCFLAGS) $(GAFLAGS) -o gsrd.$(EXE) $(SRC)
 
 acchostgpu: $(SRC)
-	$(CC) $(CCFLAGS) $(HGAFLAGS) -o gsrd.$(EXE) $(SRC)
+	$(CC) $(CCFLAGS) $(MGAFLAGS) -o gsrd.$(EXE) $(SRC)
 
 run: gsrd.$(EXE)
 	$(RUN) ./gsrd.$(EXE) "init/gsrd00000(1024,1024,2)F64.raw" -A:A -I=2000,500
