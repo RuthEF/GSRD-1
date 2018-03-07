@@ -78,3 +78,27 @@ size_t initBuff (const HostBuff *pB, const V2U32 d, const U16 step)
    return(nB);
 } // initBuff
 
+
+void initFS (FieldStat * const pFS, const Scalar * const pS)
+{
+   if (pFS)
+   {
+      Scalar s= 0; // or NaN ?
+      if (pS) { s= *pS; }
+      pFS->min= pFS->max= pFS->sum1= s;
+      pFS->sum2= s * s;
+   }
+} // initFS
+
+void printFS (const char *pHdr, const FieldStat * const pFS, const char *pFtr)
+{
+   if (pHdr && pHdr[0]) { printf("%s", pHdr); }
+   if (pFS)
+   {  const char *fsFmtStr= "%G, %G, %G, %G";
+      if (sizeof(SStat) > sizeof(double)) { fsFmtStr= "%LG, %LG, %LG, %LG"; }
+      printf(fsFmtStr, pFS->min, pFS->max, pFS->sum1, pFS->sum2);
+   }
+   if (pFtr && pFtr[0]) { printf("%s", pFtr); }
+} // printFS
+
+

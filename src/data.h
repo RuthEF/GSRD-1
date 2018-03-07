@@ -12,6 +12,7 @@
 
 
 //typedef float Scalar;
+typedef long double  SStat;
 typedef double       Scalar;
 typedef signed long  Stride;
 typedef signed long  Index;
@@ -43,8 +44,26 @@ typedef struct
 
 typedef struct
 {
+   Scalar *pAB;
+   size_t iter;
+} Frame;
+
+typedef struct
+{
    Scalar *pAB[2], *pC;
 } HostBuff;
+
+
+typedef struct
+{
+   SStat min, max, sum1, sum2;
+} FieldStat;
+
+typedef struct
+{
+   FieldStat a, b;
+} BlockStat;
+
 
 /***/
 
@@ -55,5 +74,8 @@ extern size_t paramBytes (U16 w, U16 h);
 extern size_t initParam (ParamVal * const pP, void *p, const Scalar kl[3], const V2U32 * const pD, Scalar varR, Scalar varD); // ParamArgs *
 
 extern size_t initBuff (const HostBuff *pB, const V2U32 d, const U16 step);
+
+extern void initFS (FieldStat * const pFS, const Scalar * const pS);
+extern void printFS (const char *pHdr, const FieldStat * const pFS, const char *pFtr);
 
 #endif // DATA_H

@@ -16,16 +16,6 @@ typedef struct timeval timestruct;
 
 typedef struct
 {
-   double min, max, sum;
-} FieldStat;
-
-typedef struct
-{
-   FieldStat a, b;
-} BlockStat;
-
-typedef struct
-{
    MemBuff  buff;
    ParamVal pv;
    HostBuff hb;
@@ -106,26 +96,30 @@ void summarise (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * c
    const Scalar * const pA= pAB;
    const Scalar * const pB= pAB + pO->stride[3];
    BlockStat s;
-   s.a.min= s.a.max= s.a.sum= pA[0];
-   s.b.min= s.b.max= s.b.sum= pB[0];
+   
+   initFS(&(s.a), pA);
+   initFS(&(s.b), pB);
+   
    for (size_t i=1; i<n; i++)
    {
       const Index j= i * pO->stride[0];
       const Scalar a= pA[j];
       if (a < s.a.min) { s.a.min= a; }
       if (a > s.a.max) { s.a.max= a; }
-      s.a.sum+= a;
+      s.a.sum1+= a;
+      s.a.sum2+= a * a;
       const Scalar b= pB[j];
       if (b < s.b.min) { s.b.min= b; }
       if (b > s.b.max) { s.b.max= b; }
-      s.b.sum+= b;
+      s.b.sum1+= b;
+      s.b.sum2+= b * b;
    }
    if (pS) { *pS= s; }
    //else
    {
-      printf("summarise() - \n\t   min, max, sum\n");
-      printf("\tA: %G, %G, %G\n", s.a.min, s.a.max, s.a.sum);
-      printf("\tB: %G, %G, %G\n", s.b.min, s.b.max, s.b.sum);
+      printf("summarise() - \n\t   min, max, sum1, sum2\n");
+      printFS("\tA: ", &(s.a), "\n");
+      printFS("\tB: ", &(s.b), "\n");
    }
 } // summarise
 
