@@ -129,15 +129,16 @@ int initBuff (DataContext *pDC, const size_t n, const unsigned char alignShift)
  
    pDC->buff.p= NULL;
    pDC->n= n;
-   //pDC->buff.p= malloc(5 * b); // acc data present ( pR ) fails with this style of allocation
+   //pDC->buff.p= malloc(5 * b);  // This style of allocation results in trashed buffers
+   // ... acc data present ( pR )     may also fail  
    if (pDC->buff.p)
    {
       pDC->buff.bytes= 5 * b;
-      pDC->pI= (Scalar*) alignPo2M((size_t)(pDC->buff.p), am);
+      pDC->pI=  (Scalar*) alignPo2M((size_t)(pDC->buff.p), am);
       pDC->pE1= (Scalar*) alignPo2M((size_t)(pDC->pI), am);
-      pDC->pE2=  (Scalar*) alignPo2M((size_t)(pDC->pE1 + n), am);
-      pDC->pR1=  (Scalar*) alignPo2M((size_t)(pDC->pE2 + n), am);
-      pDC->pR2=  (Scalar*) alignPo2M((size_t)(pDC->pR1 + n), am);
+      pDC->pE2= (Scalar*) alignPo2M((size_t)(pDC->pE1 + n), am);
+      pDC->pR1= (Scalar*) alignPo2M((size_t)(pDC->pE2 + n), am);
+      pDC->pR2= (Scalar*) alignPo2M((size_t)(pDC->pR1 + n), am);
    }
    else
    {
@@ -183,7 +184,10 @@ void release (DataContext *pDC)
    }
 } // release
 
-size_t analyse (Analysis * const pA, const Scalar vr[], const Scalar ve[], const size_t n, const size_t verbosity)
+size_t analyse (Analysis * const pA, 
+		const Scalar vr[], const Scalar ve[], const size_t n, 
+		const size_t verbosity,
+		const Scalar epsilon )
 {
    Analysis a= {0,};
    
@@ -203,7 +207,7 @@ size_t analyse (Analysis * const pA, const Scalar vr[], const Scalar ve[], const
       a.d.s.m[2]+= (e-r) * (e-r);
 
       // algorithmic error...
-      if (b) { a.d.nXER+= b= (e > 0.0) ^ (r > 0.0); sb+= b; }
+      if (b) { a.d.nXER+= b= (e < epsilon) ^ (r < epsilon); sb+= b; }
       a.d.nNE+= b= e < 0.0; sb+= b;
       a.d.nNR+= b= r < 0.0; sb+= b;
       a.d.nEL+= (sb > 0);
@@ -243,30 +247,31 @@ int main( int argc, char* argv[] )
    //vAddA(dc.pR, dc.pV1, dc.pV2, n);
 
    {
-      SMVal tE[3];
+      SMVal tE[4];
       const Scalar w[3]={ 0.25, 0.5, 0.25 }; // 1D isotropic diffusion weights
       // w[1]= 1.0 - (w[0] + w[2]);
       iter= n / 8;
 
       // Set initial state & warm-up algorithmic data flow
-      initData(&dc, 100.0E50); // MAX=1.79E308
+      initData(&dc, 100.0); // MAX=1.79E308
       diffuse(dc.pE1, dc.pI, dc.n, w);
       diffuse1A(dc.pR1, dc.pI, dc.n, w);
 
       // Start timing
-      deltaT();
+      tE[0]= deltaT(); tE[0]= deltaT();
       for ( i= 0; i < iter; ++i )
       {  // Unaccelerated
          diffuse(dc.pE2, dc.pE1, dc.n, w);
          diffuse(dc.pE1, dc.pE2, dc.n, w);
       }
-      tE[0]= deltaT();
+      tE[1]= deltaT();
+#if 1
       for ( i= 0; i < iter; ++i )
       {  // Accelerated but with potential for unnecessary buffer copies
          diffuse1A(dc.pR2, dc.pR1, dc.n, w);
          diffuse1A(dc.pR1, dc.pR2, dc.n, w);
       }
-      tE[1]= deltaT();
+      tE[2]= deltaT();
 
       // Optimally accelerated version: 
       // R2 buffer should unchanged if GPU copy works as expected
@@ -274,10 +279,11 @@ int main( int argc, char* argv[] )
       // Reset R1 to initial state for meaningful numerical comparison
       diffuse1A(dc.pR1, dc.pI, dc.n, w);
 
-      deltaT();
+      tE[3]= deltaT();
       diffuse2IA(iter, dc.pR2, dc.pR1, dc.n, w);
-      tE[2]= deltaT();
-      printf("\ttE= %G, %G, %G\n", tE[0], tE[1], tE[2]);
+#endif
+      tE[3]= deltaT();
+      printf("\ttE= %G, %G, %G, %G\n", tE[0], tE[1], tE[2], tE[3]);
       
       iter= 2 * i;
    }
@@ -286,7 +292,7 @@ int main( int argc, char* argv[] )
       static const char * const m[2]= { "PASS", "FAIL" };
       printf("---\n%zu iterations on %zu elements:\n", iter, dc.n);
       printf("Primary buffers: R1 vs. E1\n");
-      sumErr= analyse(&a, dc.pR1, dc.pE1, dc.n, 50);
+      sumErr= analyse(&a, dc.pR1, dc.pE1, dc.n, 50, 1E-30);
       printf("\tConservation: %G, %G\n", a.c[0].m[1], a.c[1].m[1]);
       printf("\t%zu discrepancies (M1=%G, M2=%G)\n", a.d.nD, a.d.s.m[1], a.d.s.m[2] );
       printf("\t%zu ErrLoc; %s\n", a.d.nEL, m[sumErr>0] );
@@ -295,7 +301,7 @@ int main( int argc, char* argv[] )
          printf("\tNeg: R=%zu E=%zu, Exc: %zu\n", a.d.nNR, a.d.nNE, a.d.nXER);
       }
       printf("Secondary buffers R2 vs. E2\n");
-      size_t aux= analyse(&a, dc.pR2, dc.pE2, dc.n, 5);
+      size_t aux= analyse(&a, dc.pR2, dc.pE2, dc.n, 5, 1E-30);
       printf("\t%zu discrepancies\n", a.d.nD );
    }
    release(&dc);
