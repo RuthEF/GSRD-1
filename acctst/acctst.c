@@ -95,11 +95,11 @@ INLINE void diffuseA (Scalar * restrict pR, const Scalar * const pS, const size_
 
 void diffuse1A (Scalar * restrict pR, const Scalar * const pS, const size_t n, const Scalar w[3])
 {
-   //pragma acc data copy( pR[:n] ) copyin( pS[:n], w[3] )	// FAIL negatives [...i, m-i...]
-   //pragma acc data copyout( pR[:n] ) copyin( pS[:n], w[3] )	// FAIL: nexative [0, m] 
-   #pragma acc data present_or_create( pR[:n] ) \
+   //pragma acc data region copyout( pR[:n] ) copyin( pS[:n], w[3] )
+   //pragma acc data region copy( pR[:n] ) copyin( pS[:n], w[3] )
+   #pragma acc data region present_or_create( pR[:n] ) \
 			present_or_copyin( pS[:n], w[3] ) \
-			copyout( pR[:n] ) 			// FAIL: nexative [0, m]
+			copyout( pR[:n] )
    diffuseA(pR,pS,n,w);
 } // diffuse1A
 
@@ -265,7 +265,7 @@ int main( int argc, char* argv[] )
          diffuse(dc.pE1, dc.pE2, dc.n, w);
       }
       tE[1]= deltaT();
-#if 1
+
       for ( i= 0; i < iter; ++i )
       {  // Accelerated but with potential for unnecessary buffer copies
          diffuse1A(dc.pR2, dc.pR1, dc.n, w);
@@ -281,8 +281,8 @@ int main( int argc, char* argv[] )
 
       tE[3]= deltaT();
       diffuse2IA(iter, dc.pR2, dc.pR1, dc.n, w);
-#endif
       tE[3]= deltaT();
+
       printf("\ttE= %G, %G, %G, %G\n", tE[0], tE[1], tE[2], tE[3]);
       
       iter= 2 * i;
