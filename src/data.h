@@ -56,7 +56,8 @@ typedef struct
 typedef struct
 {
    Scalar min, max;
-   SSStat sum1, sum2;
+   //SMVal sum1, sum2;
+   StatMom s;
 } FieldStat;
 
 typedef struct

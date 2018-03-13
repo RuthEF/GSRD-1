@@ -85,8 +85,13 @@ void initFS (FieldStat * const pFS, const Scalar * const pS)
    {
       Scalar s= 0; // or NaN ?
       if (pS) { s= *pS; }
-      pFS->min= pFS->max= pFS->sum1= s;
-      pFS->sum2= s * s;
+      pFS->min= pFS->max= s;
+
+      pFS->s.m[0]= (NULL != pS);
+      pFS->s.m[1]= s;
+      pFS->s.m[1]= s * s;
+      //pFS->sum1= s;
+      //pFS->sum2= s * s;
    }
 } // initFS
 
@@ -96,7 +101,7 @@ void printFS (const char *pHdr, const FieldStat * const pFS, const char *pFtr)
    if (pFS)
    {  const char *fsFmtStr= "%G, %G, %G, %G";
       if (sizeof(SSStat) > sizeof(double)) { fsFmtStr= "%G, %G, %LG, %LG"; }
-      printf(fsFmtStr, pFS->min, pFS->max, pFS->sum1, pFS->sum2);
+      printf(fsFmtStr, pFS->min, pFS->max, pFS->s.m[1], pFS->s.m[2]);
    }
    if (pFtr && pFtr[0]) { printf("%s", pFtr); }
 } // printFS
