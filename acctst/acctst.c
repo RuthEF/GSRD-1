@@ -47,10 +47,15 @@ typedef struct
 
 /*---*/
 
-void vSet (Scalar * pR, const size_t n, const Scalar v)
+void vSet (Scalar * restrict pR, const size_t n, const Scalar v)
 {
    for (size_t i= 0; i < n; ++i ) { pR[i]= v; }
 } // vSet
+
+void vCopy (Scalar * restrict pR, const size_t n, const Scalar * const pS)
+{
+   for (size_t i= 0; i < n; ++i ) { pR[i]= pS[i]; }
+} // vCopy
 
 void vAdd (Scalar * restrict pR, const Scalar * const pV1, const Scalar * const pV2, const size_t n)
 {
@@ -103,7 +108,7 @@ void diffuse1A (Scalar * restrict pR, const Scalar * const pS, const size_t n, c
    diffuseA(pR,pS,n,w);
 } // diffuse1A
 
-void diffuse2IA (const size_t nI, Scalar * restrict pTR, Scalar * restrict pSR, const size_t n, const Scalar w[3])
+size_t diffuse2IA (const size_t nI, Scalar * restrict pTR, Scalar * restrict pSR, const size_t n, const Scalar w[3])
 {
    #pragma acc data region present_or_create( pTR[:n] ) copy( pSR[:n] ) present_or_copyin( w[:3] )
    {
@@ -114,6 +119,22 @@ void diffuse2IA (const size_t nI, Scalar * restrict pTR, Scalar * restrict pSR, 
          diffuseA(pSR,pTR,n,w);
       }
    }
+   return(2*nI);
+} // diffuse2IA
+
+size_t diffuse2I1A (const size_t nI, Scalar * restrict pR, Scalar * restrict pS, const size_t n, const Scalar w[3])
+{
+   #pragma acc data region present_or_create( pR[:n] ) copyin( pS[:n] ) present_or_copyin( w[:3] ) copyout( pR[:n] )
+   {
+      //pragma acc ???
+      diffuseA(pR,pS,n,w);
+      for ( size_t i= 0; i < nI; ++i )
+      {
+         diffuseA(pS,pR,n,w);
+         diffuseA(pR,pS,n,w);
+      }
+   }
+   return(2*nI+1);
 } // diffuse2IA
 
 size_t alignPo2M (const size_t s, const size_t po2m)
@@ -273,7 +294,8 @@ int main( int argc, char* argv[] )
       }
       tE[2]= deltaT();
 
-      // Optimally accelerated version: 
+      // Optimally accelerated version:
+#if 0
       // R2 buffer should unchanged if GPU copy works as expected
       vSet(dc.pR2, dc.n, -4E9); 
       // Reset R1 to initial state for meaningful numerical comparison
@@ -282,7 +304,12 @@ int main( int argc, char* argv[] )
       tE[3]= deltaT();
       diffuse2IA(iter, dc.pR2, dc.pR1, dc.n, w);
       tE[3]= deltaT();
-
+#else
+      vCopy(dc.pR2, dc.n, dc.pI);
+      tE[3]= deltaT();
+      diffuse2I1A(iter, dc.pR1, dc.pR2, dc.n, w);
+      tE[3]= deltaT();
+#endif
       printf("\ttE= %G, %G, %G, %G\n", tE[0], tE[1], tE[2], tE[3]);
       
       iter= 2 * i;
