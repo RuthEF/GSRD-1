@@ -134,20 +134,21 @@ void procBindData (const HostBuff * const pHB, const ParamVal * const pP, const 
 // _rab2= KR0 * a * b * b
 // a+= laplace9P(a, KLA0) - _rab2 + mKRA * (1 - a)
 // b+= laplace9P(b, KLB0) + _rab2 - mKDB * b
-U32 proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP, const U32 iterMax)
+void proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP)
 {
    Stride wrap[6]; // LRBT strides for boundary wrap
    const V2U32 end= {pO->def.x-1, pO->def.y-1};
    U32 x, y, iter= 0;
 
-   #pragma acc data copyin( pP[0:1], pO[0:1] ) \
-      copyin( pP->pKRR[0:pP->n], pP->pKRA[0:pP->n], pP->pKDB[0:pP->n] ) \
-      copyin( pS[0:pO->n] ) \
-      present_or_create( pR[0:pO->n] )
+   //pragma acc data copyin( pP[0:1], pO[0:1] ) \
+   //   copyin( pP->pKRR[0:pP->n], pP->pKRA[0:pP->n], pP->pKDB[0:pP->n] ) \
+   //   copyin( pS[0:pO->n] ) \
+   //   present_or_create( pR[0:pO->n] )
+   #pragma acc data present( pR[0:n], pS[0:n], pO[0:1], pOp0:1] )
    {
       //#pragma acc data present( pP, pO, pS[0:pO->n], pR[0:pO->n]  )
       //#pragma acc data copyout( pR[0:pO->n] )
-      for ( iter= 0; iter < iterMax; ++iter )
+      //for ( iter= 0; iter < iterMax; ++iter )
       {
 	 // Process according to memory access pattern (boundary wrap)
 	 // First the interior
@@ -246,6 +247,8 @@ U32 proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, c
          wrap[2]= pO->stride[1]; wrap[3]= pO->stride[2] - pO->stride[1];
          wrap[4]= -pO->stride[0]; wrap[5]= pO->stride[0] - pO->stride[1];
 
+         #pragma acc parallel
+         {
          proc1(pR, pS, 0, pO->stride[3], wrap+0, pP);
          proc1(pR, pS, pO->stride[1]-pO->stride[0], pO->stride[3], wrap+2, pP);
 
@@ -255,21 +258,37 @@ U32 proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, c
 
          proc1(pR, pS, pO->stride[2]-pO->stride[1], pO->stride[3], wrap+0, pP);
          proc1(pR, pS, pO->stride[2]-pO->stride[0], pO->stride[3], wrap+2, pP);
+         }
 #endif
-         if (iter < iterMax)
-         { Scalar *pT= (Scalar*)pS; pS= pR; pR= pT; } // SWAP()
+         //if (iter < iterMax) { Scalar *pT= (Scalar*)pS; pS= pR; pR= pT; } // SWAP()
       } // for iter < iterMax
    } // ... acc data ..
    //pragma acc data update host( pR[0:pO->n] )
-   #pragma data updateout( pR[0:pO->n] )
+   /*pragma data updateout( pR[0:pO->n] )
    {
       Scalar sum1=0, sum2= 0;
       #pragma acc loop reduction(+:sum1)
       for ( size_t i= 0; i < pO->n; ++i ) { const Scalar r= pR[i]; sum1+= r; sum2+= r * r; }
       printf("proc() - sum:%G,%G\n", sum1, sum2);
    }
-   return(iter);
+   return(iter);*/
 } // proc
+
+U32 proc2I1A (Scalar * restrict pR, Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP, const U32 iM)
+{
+   #pragma acc data region present_or_create( pR[:n] ) \
+      copyin( pS[:n] ) present_or_copyin( w[:3] ) \
+      copyout( pR[:n] )
+   {
+      proc(pR,pS,pO,pP);
+      for (U32 i= 0; i < iM; ++i )
+      {
+         proc(pS,pR,pO,pP);
+         proc(pR,pS,pO,pP);
+      }
+   }
+   return(2*iM+1);
+} // proc2I1A
 
 void procSummarise (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * const pO)
 {

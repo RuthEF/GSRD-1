@@ -160,7 +160,7 @@ int main ( int argc, char* argv[] )
          if (iM > iR) { iM= iR; }
 
          deltaT();
-         gCtx.i+= proc(gCtx.hb.pAB[(k^0x1)], gCtx.hb.pAB[k], &(gCtx.org), &(gCtx.pv), iM);
+         gCtx.i+= proc2I1A(gCtx.hb.pAB[(k^0x1)], gCtx.hb.pAB[k], &(gCtx.org), &(gCtx.pv), iM>>1);
          tE0= deltaT();
          tE1+= tE0;
          
