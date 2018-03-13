@@ -255,7 +255,7 @@ SMVal deltaT (void)
 
 size_t saveBuff (const void * const pB, const char * const path, const size_t bytes)
 {
-   FILE *hF= fopen(path,"r");
+   FILE *hF= fopen(path,"w");
    if (hF)
    {
       size_t r= fwrite(pB, 1, bytes, hF);
