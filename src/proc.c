@@ -252,6 +252,7 @@ U32 proc2IA (Scalar * restrict pTR, Scalar * restrict pSR, const ImgOrg * pO, co
 
 U32 proc2I1A (Scalar * restrict pR, Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP, const U32 nI)
 {
+   printf("proc2I1A()-\n");
    #pragma acc data region present_or_create( pR[:pO->n] ) present_or_copyin( pO[:1], pP[:1], pP->pKRR[:pP->n], pP->pKRA[:pP->n], pP->pKDB[:pP->n] ) \
                            copyin( pS[:pO->n] ) copyout( pR[:pO->n] )
    {
@@ -262,6 +263,7 @@ U32 proc2I1A (Scalar * restrict pR, Scalar * restrict pS, const ImgOrg * pO, con
          procA(pR,pS,pO,pP);
       }
    }
+   printf("-proc2I1A()\n");
    return(2*nI+1);
 } // proc2I1A
 
