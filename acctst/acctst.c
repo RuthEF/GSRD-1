@@ -253,6 +253,18 @@ SMVal deltaT (void)
    return(dt);
 } // deltaT
 
+size_t saveBuff (const void * const pB, const char * const path, const size_t bytes)
+{
+   FILE *hF= fopen(path,"r");
+   if (hF)
+   {
+      size_t r= fwrite(pB, 1, bytes, hF);
+      fclose(hF);
+      if (r == bytes) { return(r); }
+   }
+   return(0);
+} // saveBuff
+
 int main( int argc, char* argv[] )
 {
    size_t iter, i, n, sumErr=0;
@@ -310,6 +322,8 @@ int main( int argc, char* argv[] )
       diffuse2I1A(iter, dc.pR1, dc.pR2, dc.n, w);
       tE[3]= deltaT();
 #endif
+      n= saveBuff(dc.pR1, "R1F64.dat", dc.n * sizeof(*(dc.pR1)));
+      printf("\tfile %zu bytes", n);
       printf("\ttE= %G, %G, %G, %G\n", tE[0], tE[1], tE[2], tE[3]);
       
       iter= 2 * i;
