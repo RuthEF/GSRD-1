@@ -1,19 +1,6 @@
 
 #include "proc.h"
 
-#if defined(_WIN32) || defined(_WIN64)
-#include <sys/timeb.h>
-#define GETTIME(a) _ftime(a)
-#define USEC(t1,t2) ((((t2).time-(t1).time)*1000+((t2).millitm-(t1).millitm))*100)
-typedef struct _timeb timestruct;
-#else
-#include <sys/time.h>
-#define GETTIME(a) gettimeofday(a,NULL)
-#define USEC(t1,t2) (((t2).tv_sec-(t1).tv_sec)*1000000+((t2).tv_usec-(t1).tv_usec))
-typedef struct timeval timestruct;
-#endif
-
-
 typedef struct
 {
    MemBuff  buff;
@@ -151,8 +138,7 @@ int main ( int argc, char* argv[] )
    if (procInitAcc(pPI->flags) && initCtx(&gCtx, pDFI->v[0], pDFI->v[1], 4))
    {
       size_t i= 0, iM= pPI->maxIter, iR;
-      timestruct t1, t2;
-      Scalar tE0=0, tE1=0;
+      SMVal tE0=0, tE1=0;
       BlockStat bs={0};
 
       if (0 == loadBuff(gCtx.hb.pAB[0], pDFI->path, pDFI->bytes))
@@ -171,17 +157,16 @@ int main ( int argc, char* argv[] )
 
          iR= pPI->maxIter - gCtx.i;
          if (iM > iR) { iM= iR; }
-         //iM+= 1 - (iM & 1); // make higher odd
 
-         GETTIME(&t1);
+         deltaT();
          gCtx.i+= proc(gCtx.hb.pAB[(k^0x1)], gCtx.hb.pAB[k], &(gCtx.org), &(gCtx.pv), iM);
-         GETTIME(&t2);
-
+         tE0= deltaT();
+         tE1+= tE0;
+         
          k= gCtx.i & 0x1;
          summarise(&bs, gCtx.hb.pAB[k], &(gCtx.org));
-         tE0= 1E-6 * USEC(t1,t2);
-         tE1+= tE0;
          printf("\ttE= %G, %G\n", tE0, tE1);
+
          saveFrame(gCtx.hb.pAB[k], gCtx.org.def, gCtx.i);
       } while (gCtx.i < pPI->maxIter);
       releaseCtx(&gCtx);
