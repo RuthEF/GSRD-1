@@ -137,7 +137,7 @@ void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO,
    const V2U32 end= {pO->def.x-1, pO->def.y-1};
    U32 x, y, iter= 0;
 
-   #pragma acc data present( pR[0:pO->n], pS[0:pO->n], pO[0:1], pO[0:1] )
+   #pragma acc data present( pR[:pO->n], pS[:pO->n], pO[:1], pP[:1], pP->pK{:pP->n*3] )
    {
       #pragma acc parallel loop
       for ( y= 1; y < end.y; ++y )
@@ -236,20 +236,32 @@ void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO,
    } // ... acc data ..
 } // procA
 
-U32 proc2I1A (Scalar * restrict pR, Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP, const U32 iM)
+U32 proc2IA (Scalar * restrict pTR, Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP, const U32 nI)
 {
-   #pragma acc data region present_or_create( pR[:pO->n] ) \
-      copyin( pS[:pO->n] ) present_or_copyin( pO[:1], pP[:1] ) \
-      copyout( pR[:pO->n] )
+   #pragma acc data region present_or_create( pR[:pO->n] ) present_or_copyin( pO[:1], pP[:1] ) copy( pS[:pO->n] )
+   {
+      for (U32 i= 0; i < nI; ++i )
+      {
+         procA(pTR,pS,pO,pP);
+         procA(pS,pTR,pO,pP);
+      }
+   }
+   return(2*nI);
+} // proc2I1A
+
+U32 proc2I1A (Scalar * restrict pR, Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP, const U32 nI)
+{
+   #pragma acc data region present_or_create( pR[:pO->n] ) present_or_copyin( pO[:1], pP[:1] ) \
+                           copyin( pS[:pO->n] ) copyout( pR[:pO->n] )
    {
       procA(pR,pS,pO,pP);
-      for (U32 i= 0; i < iM; ++i )
+      for (U32 i= 0; i < nI; ++i )
       {
          procA(pS,pR,pO,pP);
          procA(pR,pS,pO,pP);
       }
    }
-   return(2*iM+1);
+   return(2*nI+1);
 } // proc2I1A
 
 void procSummarise (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * const pO)

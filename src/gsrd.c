@@ -28,22 +28,18 @@ Context *initCtx (Context * const pC, U16 w, U16 h, U16 nF)
    pC->buff.p= NULL; pC->buff.bytes= 0;
    if (b2F > n)
    {
-      void *p= malloc(paramBytes(w,h));
-      if (p)
-      {
-         initParam(&(pC->pv), p, gKL, &(pC->org.def), 0.100, 0.005);
-         //printf("initCtx() - %zu bytes @ %p\n", b, p);
+      initParam(&(pC->pv), gKL, &(pC->org.def), 0.100, 0.005);
+      //printf("initCtx() - %zu bytes @ %p\n", b, p);
 
-         initOrg(&(pC->org), w, h, 0);
-         
-         pC->hb.pAB[0]= malloc(b2F);
-         pC->hb.pAB[1]= malloc(b2F);
-         if (pC->hb.pAB[0] && pC->hb.pAB[1])
-         {
-            if (nF >= 5) { pC->hb.pC= malloc(b2F / 2); } else { pC->hb.pC= NULL; }
-            pC->i= 0;
-            return(pC);
-         }
+      initOrg(&(pC->org), w, h, 0);
+      
+      pC->hb.pAB[0]= malloc(b2F);
+      pC->hb.pAB[1]= malloc(b2F);
+      if (pC->hb.pAB[0] && pC->hb.pAB[1])
+      {
+         if (nF >= 5) { pC->hb.pC= malloc(b2F / 2); } else { pC->hb.pC= NULL; }
+         pC->i= 0;
+         return(pC);
       }
    }
    return(NULL);
@@ -54,7 +50,7 @@ void releaseCtx (Context * const pC)
    //if (pC && pC->buff.p && (pC->buff.bytes > 0)) { free(pC->buff.p); memset(pC, 0, sizeof(*pC)); }
    if (pC)
    {
-      free((void*)(pC->pv.pKRR));
+      free((void*)(pC->pv.pK));
       free(pC->hb.pAB[0]);
       free(pC->hb.pAB[1]);
       memset(pC, 0, sizeof(*pC));
