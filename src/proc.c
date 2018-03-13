@@ -137,7 +137,7 @@ void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO,
    const V2U32 end= {pO->def.x-1, pO->def.y-1};
    U32 x, y, iter= 0;
 
-   #pragma acc data present( pR[:pO->n], pS[:pO->n], pO[:1], pP[:1], pP->pK[x:pP->n*3] )
+   #pragma acc data present( pR[:pO->n], pS[:pO->n], pO[:1], pP[:1], pP->pKRR[:pP->n], pP->pKRA[:pP->n], pP->pKDB[:pP->n] )
    {
       #pragma acc parallel loop
       for ( y= 1; y < end.y; ++y )
@@ -238,7 +238,7 @@ void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO,
 
 U32 proc2IA (Scalar * restrict pTR, Scalar * restrict pSR, const ImgOrg * pO, const ParamVal * pP, const U32 nI)
 {
-   #pragma acc data region present_or_create( pTR[:pO->n] ) present_or_copyin( pO[:1], pP[:1], pP->pK[:pP->n*3] ) \
+   #pragma acc data region present_or_create( pTR[:pO->n] ) present_or_copyin( pO[:1], pP[:1], pP->pKRR[:pP->n], pP->pKRA[:pP->n], pP->pKDB[:pP->n] ) \
                            copy( pSR[:pO->n] )
    {
       for (U32 i= 0; i < nI; ++i )
@@ -252,7 +252,7 @@ U32 proc2IA (Scalar * restrict pTR, Scalar * restrict pSR, const ImgOrg * pO, co
 
 U32 proc2I1A (Scalar * restrict pR, Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP, const U32 nI)
 {
-   #pragma acc data region present_or_create( pR[:pO->n] ) present_or_copyin( pO[:1], pP[:1], pP->pK[:pP->n*3] ) \
+   #pragma acc data region present_or_create( pR[:pO->n] ) present_or_copyin( pO[:1], pP[:1], pP->pKRR[:pP->n], pP->pKRA[:pP->n], pP->pKDB[:pP->n] ) \
                            copyin( pS[:pO->n] ) copyout( pR[:pO->n] )
    {
       procA(pR,pS,pO,pP);

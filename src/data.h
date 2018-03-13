@@ -70,9 +70,8 @@ typedef struct
 
 extern void initOrg (ImgOrg * const pO, U16 w, U16 h, U8 flags);
 
-//extern size_t paramBytes (U16 w, U16 h);
-
 extern size_t initParam (ParamVal * const pP, const Scalar kl[3], const V2U32 * const pD, Scalar varR, Scalar varD); // ParamArgs *
+extern void releaseParam (ParamVal * const pP);
 
 extern size_t initBuff (const HostBuff *pB, const V2U32 d, const U16 step);
 

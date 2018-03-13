@@ -47,10 +47,9 @@ Context *initCtx (Context * const pC, U16 w, U16 h, U16 nF)
 
 void releaseCtx (Context * const pC)
 {
-   //if (pC && pC->buff.p && (pC->buff.bytes > 0)) { free(pC->buff.p); memset(pC, 0, sizeof(*pC)); }
    if (pC)
    {
-      free((void*)(pC->pv.pK));
+      releaseParam(&(pC->pv));
       free(pC->hb.pAB[0]);
       free(pC->hb.pAB[1]);
       memset(pC, 0, sizeof(*pC));
