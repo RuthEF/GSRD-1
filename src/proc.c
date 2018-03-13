@@ -144,7 +144,7 @@ void proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, 
    //   copyin( pP->pKRR[0:pP->n], pP->pKRA[0:pP->n], pP->pKDB[0:pP->n] ) \
    //   copyin( pS[0:pO->n] ) \
    //   present_or_create( pR[0:pO->n] )
-   #pragma acc data present( pR[0:n], pS[0:n], pO[0:1], pOp0:1] )
+   #pragma acc data present( pR[0:pO->n], pS[0:pO->n], pO[0:1], pO[0:1] )
    {
       //#pragma acc data present( pP, pO, pS[0:pO->n], pR[0:pO->n]  )
       //#pragma acc data copyout( pR[0:pO->n] )
@@ -247,7 +247,7 @@ void proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, 
          wrap[2]= pO->stride[1]; wrap[3]= pO->stride[2] - pO->stride[1];
          wrap[4]= -pO->stride[0]; wrap[5]= pO->stride[0] - pO->stride[1];
 
-         #pragma acc parallel
+         //pragma acc parallel
          {
          proc1(pR, pS, 0, pO->stride[3], wrap+0, pP);
          proc1(pR, pS, pO->stride[1]-pO->stride[0], pO->stride[3], wrap+2, pP);
@@ -276,9 +276,9 @@ void proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, 
 
 U32 proc2I1A (Scalar * restrict pR, Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP, const U32 iM)
 {
-   #pragma acc data region present_or_create( pR[:n] ) \
-      copyin( pS[:n] ) present_or_copyin( w[:3] ) \
-      copyout( pR[:n] )
+   #pragma acc data region present_or_create( pR[:pO->n] ) \
+      copyin( pS[:pO->n] ) present_or_copyin( pO[:1], pP[:1] ) \
+      copyout( pR[:pO->n] )
    {
       proc(pR,pS,pO,pP);
       for (U32 i= 0; i < iM; ++i )
