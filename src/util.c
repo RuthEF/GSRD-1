@@ -1,6 +1,10 @@
 
 #include "util.h"
 
+#define GETTIME(a) gettimeofday(a,NULL)
+#define USEC(t1,t2) (((t2).tv_sec-(t1).tv_sec)*1000000+((t2).tv_usec-(t1).tv_usec))
+
+
 // Replacement for strchr() (not correctly supported by pgi-cc) with extras
 const char *sc (const char *s, const char c, const char * const e, const I8 o)
 {
@@ -55,7 +59,7 @@ size_t loadBuff (void * const pB, const char * const path, const size_t bytes)
 
 size_t saveBuff (const void * const pB, const char * const path, const size_t bytes)
 {
-   FILE *hF= fopen(path,"r");
+   FILE *hF= fopen(path,"w");
    if (hF)
    {
       size_t r= fwrite(pB, 1, bytes, hF);
@@ -64,6 +68,17 @@ size_t saveBuff (const void * const pB, const char * const path, const size_t by
    }
    return(0);
 } // saveBuff
+
+SMVal deltaT (void)
+{
+   static struct timeval t[2]={0,};
+   static int i= 0;
+   SMVal dt;
+   GETTIME(t+i);
+   dt= 1E-6 * USEC(t[i^1],t[i]);
+   i^= 1;
+   return(dt);
+} // deltaT
 
 int scanZ (size_t * const pZ, const char s[])
 {

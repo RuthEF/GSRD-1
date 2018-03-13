@@ -9,6 +9,7 @@
 #include <math.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 // General compiler tweaks
@@ -40,7 +41,13 @@ typedef unsigned char  U8;
 typedef unsigned short U16;
 typedef unsigned long  U32;
 
-typedef double SSStat; // Scalar Sum Stat
+typedef double SMVal; // Stat measure value
+typedef struct
+{
+   SMVal m[3];
+} StatMom;
+
+typedef double SSStat; // DEPRECATE: Scalar Sum Stat
 //typedef long double  SSStat; // not parallelisable with SSE or GPU
 
 typedef int Bool32;
@@ -82,6 +89,7 @@ extern size_t fileSize (const char * const path);
 extern size_t loadBuff (void * const pB, const char * const path, const size_t bytes);
 extern size_t saveBuff (const void * const pB, const char * const path, const size_t bytes);
 
+extern SMVal deltaT (void);
 
 // extern const char *sc (const char *s, const char c, const char * const e, const I8 o);
 //extern int scanVI (int v[], const int vMax, ScanSeg * const pSS, const char s[]);
