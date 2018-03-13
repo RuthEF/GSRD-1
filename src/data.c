@@ -32,18 +32,19 @@ void initOrg (ImgOrg * const pO, U16 w, U16 h, U8 flags)
 size_t initParam (ParamVal * const pP, const Scalar kL[3], const V2U32 *pD, Scalar varR, Scalar varD) // ParamArgs *
 {
    U32 i, n= 0;
-   Scalar *pA= NULL, *pB= NULL, *pC= NULL;
+   Scalar *pA, *pB, *pC;
    // Set diffusion weights
    for ( i= 0; i<3; ++i ) { pP->kL.a[i]= kL[i] * KLA0; pP->kL.b[i]= kL[i] * KLB0; }
    pP->kRR= KR0;
    pP->kRA= KRA0;
    pP->kDB= KDB0;
+   pA= pB= pC= NULL;
    if (pD)
    {
       n= MAX(pD->x, pD->y);
-      pA= malloc( n * sizeof(*(pP->pK)) );
-      if (pA) { pB= malloc( n * sizeof(*(pP->pK)) ); }
-      if (pB) { pC= malloc( n * sizeof(*(pP->pK)) ); }
+      pA= malloc( n * sizeof(*(pP->pKRR)) );
+      if (pA) { pB= malloc( n * sizeof(*(pP->pKRA)) ); }
+      if (pB) { pC= malloc( n * sizeof(*(pP->pKDB)) ); }
    }
    pP->n= n;
    if (pC)
@@ -51,10 +52,6 @@ size_t initParam (ParamVal * const pP, const Scalar kL[3], const V2U32 *pD, Scal
       Scalar kRR=KR0, kRA=KRA0, kDB=KDB0;
       Scalar dKRR=0, dKRA=0, dKDB=0;
       
-      pP->pKRR= pA;
-      pP->pKRA= pB;
-      pP->pKDB= pC;
-
       dKRR= (kRR * varR) / n;
       dKDB= (kDB * varD) / n;
       for (i= 0; i<n; ++i)
@@ -63,9 +60,16 @@ size_t initParam (ParamVal * const pP, const Scalar kL[3], const V2U32 *pD, Scal
          pB[i]= kRA; kRA+= dKRA;
          pC[i]= kDB; kDB+= dKDB;
       }
-      return(3*pP->n);
-   } else { if (pB) { free(pB); } if (pC) { free(pC); } }
-   return(0);
+   } else
+   {
+      if (pA) { free(pA); }
+      if (pB) { free(pB); }
+      pA= pB= NULL;
+   }
+   pP->pKRR= pA;
+   pP->pKRA= pB;
+   pP->pKDB= pC;
+   return(n);
 } // initParam
 
 void releaseParam (ParamVal * const pP)

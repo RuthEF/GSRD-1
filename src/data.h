@@ -25,7 +25,7 @@ typedef struct
 {
    KLAB   kL;
    Scalar kRR, kRA, kDB;
-   const Scalar *pK, * restrict pKRR, * restrict pKRA, * restrict pKDB;
+   const Scalar *pKRR, *pKRA, *pKDB;
    size_t n;
 } ParamVal;
 
