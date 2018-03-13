@@ -3,7 +3,7 @@
 
 typedef struct
 {
-   MemBuff  buff;
+   MemBuff  buff; // DEPRECATE
    ParamVal pv;
    HostBuff hb;
    ImgOrg   org;
@@ -24,23 +24,26 @@ Context *initCtx (Context * const pC, U16 w, U16 h, U16 nF)
    if (0 == h) { h= 256; }
    if (0 == nF) { nF= 4; }
    const size_t n= w * h;
-   const size_t b= paramBytes(w,h) + n * nF * sizeof(Scalar);
-   if (b > n)
+   const size_t b2F= 2 * n * sizeof(Scalar);
+   pC->buff.p= NULL; pC->buff.bytes= 0;
+   if (b2F > n)
    {
-      void *p= malloc(b);
+      void *p= malloc(paramBytes(w,h));
       if (p)
       {
-         printf("initCtx() - %zu bytes @ %p\n", b, p);
-         pC->buff.p= p;
-         pC->buff.bytes= b;
+         initParam(&(pC->pv), p, gKL, &(pC->org.def), 0.100, 0.005);
+         //printf("initCtx() - %zu bytes @ %p\n", b, p);
 
          initOrg(&(pC->org), w, h, 0);
-         pC->hb.pAB[0]= p;
-         pC->hb.pAB[0]+= initParam(&(pC->pv), p, gKL, &(pC->org.def), 0.100, 0.005);
-         if (nF >= 5) { pC->hb.pC= pC->hb.pAB[0]; pC->hb.pAB[0]+= n; } else { pC->hb.pC= NULL; }
-         pC->hb.pAB[1]= pC->hb.pAB[0] + 2 * n;
-         pC->i= 0;
-         return(pC);
+         
+         pC->hb.pAB[0]= malloc(b2F);
+         pC->hb.pAB[1]= malloc(b2F);
+         if (pC->hb.pAB[0] && pC->hb.pAB[1])
+         {
+            if (nF >= 5) { pC->hb.pC= malloc(b2F / 2); } else { pC->hb.pC= NULL; }
+            pC->i= 0;
+            return(pC);
+         }
       }
    }
    return(NULL);
@@ -48,7 +51,14 @@ Context *initCtx (Context * const pC, U16 w, U16 h, U16 nF)
 
 void releaseCtx (Context * const pC)
 {
-   if (pC && pC->buff.p && (pC->buff.bytes > 0)) { free(pC->buff.p); memset(pC, 0, sizeof(*pC)); }
+   //if (pC && pC->buff.p && (pC->buff.bytes > 0)) { free(pC->buff.p); memset(pC, 0, sizeof(*pC)); }
+   if (pC)
+   {
+      free((void*)(pC->pv.pKRR));
+      free(pC->hb.pAB[0]);
+      free(pC->hb.pAB[1]);
+      memset(pC, 0, sizeof(*pC));
+   }
 } // releaseCtx
 
 size_t saveFrame (const Scalar * const pB, const V2U32 def, const U32 iNum)
@@ -74,7 +84,8 @@ size_t saveFrame (const Scalar * const pB, const V2U32 def, const U32 iNum)
 
 void bindCtx (const Context * pC)
 {
-   procBindData( &(pC->hb), &(pC->pv), &(pC->org), pC->i );
+   if (pC) { ; }
+   //procBindData( &(pC->hb), &(pC->pv), &(pC->org), pC->i );
 } // bindCtx
 
 void summarise (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * const pO)

@@ -131,124 +131,97 @@ void procBindData (const HostBuff * const pHB, const ParamVal * const pP, const 
    ;
 } // procBindData
 
-// _rab2= KR0 * a * b * b
-// a+= laplace9P(a, KLA0) - _rab2 + mKRA * (1 - a)
-// b+= laplace9P(b, KLB0) + _rab2 - mKDB * b
-void proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP)
+void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP)
 {
    Stride wrap[6]; // LRBT strides for boundary wrap
    const V2U32 end= {pO->def.x-1, pO->def.y-1};
    U32 x, y, iter= 0;
 
-   //pragma acc data copyin( pP[0:1], pO[0:1] ) \
-   //   copyin( pP->pKRR[0:pP->n], pP->pKRA[0:pP->n], pP->pKDB[0:pP->n] ) \
-   //   copyin( pS[0:pO->n] ) \
-   //   present_or_create( pR[0:pO->n] )
    #pragma acc data present( pR[0:pO->n], pS[0:pO->n], pO[0:1], pO[0:1] )
    {
-      //#pragma acc data present( pP, pO, pS[0:pO->n], pR[0:pO->n]  )
-      //#pragma acc data copyout( pR[0:pO->n] )
-      //for ( iter= 0; iter < iterMax; ++iter )
+      #pragma acc parallel loop
+      for ( y= 1; y < end.y; ++y )
       {
-	 // Process according to memory access pattern (boundary wrap)
-	 // First the interior
-         #pragma acc parallel loop
-         for ( y= 1; y < end.y; ++y )
-         {
-            #pragma acc loop vector
-            for ( x= 1; x < end.x; ++x )
-            {
-               const Index i= y * pO->stride[1] + x * pO->stride[0];
-               const Index j= i + pO->stride[3];
-               const Scalar a= pS[i];
-               const Scalar b= pS[j];
-               const Scalar rab2= pP->pKRR[x] * a * b * b;
-               //const Scalar ar= KRA0 * (1 - a);
-               //const Scalar bd= KDB0 * b;
-               pR[i]= a + laplace2D2S9P(pS+i, pO->stride, pP->kL.a) - rab2 + pP->pKRA[x] * (1 - a);
-               pR[j]= b + laplace2D2S9P(pS+j, pO->stride, pP->kL.b) + rab2 - pP->pKDB[y] * b;
-            }
-         }
-
-         // Boundaries
-#if 1 // Non-corner Edges
-         // Share the two middle wrap strides between edges (order unimportant due to symmetric convolution kernel)
-         //wrap[0]= def.x; wrap[1]= def.x*(def.y-1);	// 0..3 LO, 2..5 HI
-         //wrap[2]= -1; wrap[3]= 1;
-         //wrap[4]= -def.x*(def.y-1); wrap[5]= -def.x;
-
-         wrap[0]= pO->stride[1]; wrap[1]= pO->stride[2] - pO->stride[1];	// 0..3 LO, 2..5 HI
-         wrap[2]= -pO->stride[0]; wrap[3]= pO->stride[0];
-         wrap[4]= pO->stride[1] - pO->stride[2]; wrap[5]= -pO->stride[1];
-
-         // Horizontal top & bottom
-         #pragma acc parallel loop
+         #pragma acc loop vector
          for ( x= 1; x < end.x; ++x )
          {
-            const Index i1= x * pO->stride[0];
-            const Index j1= i1 + pO->stride[3];
-            const Scalar a1= pS[i1];
-            const Scalar b1= pS[j1];
-            Scalar rab2= pP->pKRR[x] * a1 * b1 * b1;
-            //const Scalar ar1= KRA0 * (1 - a1);
-            //const Scalar bd1= KDB0 * b1;
-            pR[i1]= a1 + laplace2D4S9P(pS+i1, wrap+0, pP->kL.a) - rab2 + pP->pKRA[x] * (1 - a1);
-            pR[j1]= b1 + laplace2D4S9P(pS+j1, wrap+0, pP->kL.b) + rab2 - pP->pKDB[0] * b1;
-
-            const Stride offsY= pO->stride[2] - pO->stride[1];
-            const Index i2= i1 + offsY;
-            const Index j2= j1 + offsY;
-            const Scalar a2= pS[i2];
-            const Scalar b2= pS[j2];
-            rab2= pP->pKRR[x] * a2 * b2 * b2;
-            pR[i2]= a2 + laplace2D4S9P(pS+i2, wrap+2, pP->kL.a) - rab2 + pP->pKRA[x] * (1 - a2);
-            pR[j2]= b2 + laplace2D4S9P(pS+j2, wrap+2, pP->kL.b) + rab2 - pP->pKDB[end.y] * b2;
+            const Index i= y * pO->stride[1] + x * pO->stride[0];
+            const Index j= i + pO->stride[3];
+            const Scalar a= pS[i];
+            const Scalar b= pS[j];
+            const Scalar rab2= pP->pKRR[x] * a * b * b;
+            //const Scalar ar= KRA0 * (1 - a);
+            //const Scalar bd= KDB0 * b;
+            pR[i]= a + laplace2D2S9P(pS+i, pO->stride, pP->kL.a) - rab2 + pP->pKRA[x] * (1 - a);
+            pR[j]= b + laplace2D2S9P(pS+j, pO->stride, pP->kL.b) + rab2 - pP->pKDB[y] * b;
          }
+      }
+
+      // Boundaries
+#if 1 // Non-corner Edges
+      wrap[0]= pO->stride[1]; wrap[1]= pO->stride[2] - pO->stride[1];	// 0..3 LO, 2..5 HI
+      wrap[2]= -pO->stride[0]; wrap[3]= pO->stride[0];
+      wrap[4]= pO->stride[1] - pO->stride[2]; wrap[5]= -pO->stride[1];
+
+      // Horizontal top & bottom
+      #pragma acc parallel loop
+      for ( x= 1; x < end.x; ++x )
+      {
+         const Index i1= x * pO->stride[0];
+         const Index j1= i1 + pO->stride[3];
+         const Scalar a1= pS[i1];
+         const Scalar b1= pS[j1];
+         Scalar rab2= pP->pKRR[x] * a1 * b1 * b1;
+         //const Scalar ar1= KRA0 * (1 - a1);
+         //const Scalar bd1= KDB0 * b1;
+         pR[i1]= a1 + laplace2D4S9P(pS+i1, wrap+0, pP->kL.a) - rab2 + pP->pKRA[x] * (1 - a1);
+         pR[j1]= b1 + laplace2D4S9P(pS+j1, wrap+0, pP->kL.b) + rab2 - pP->pKDB[0] * b1;
+
+         const Stride offsY= pO->stride[2] - pO->stride[1];
+         const Index i2= i1 + offsY;
+         const Index j2= j1 + offsY;
+         const Scalar a2= pS[i2];
+         const Scalar b2= pS[j2];
+         rab2= pP->pKRR[x] * a2 * b2 * b2;
+         pR[i2]= a2 + laplace2D4S9P(pS+i2, wrap+2, pP->kL.a) - rab2 + pP->pKRA[x] * (1 - a2);
+         pR[j2]= b2 + laplace2D4S9P(pS+j2, wrap+2, pP->kL.b) + rab2 - pP->pKDB[end.y] * b2;
+      }
 #endif
 #if 1
-         // Vertical edges (non-corner)
-         //wrap[0]= def.x-1; wrap[1]= 1;
-         //wrap[2]= def.x; wrap[3]= -def.x;
-         //wrap[4]= -1; wrap[5]= 1-def.x;
+      wrap[0]= pO->stride[1] - pO->stride[0]; wrap[1]= pO->stride[0];
+      wrap[2]= pO->stride[1]; wrap[3]= -pO->stride[1];
+      wrap[4]= -pO->stride[0]; wrap[5]= pO->stride[0] - pO->stride[1];
 
-         wrap[0]= pO->stride[1] - pO->stride[0]; wrap[1]= pO->stride[0];
-         wrap[2]= pO->stride[1]; wrap[3]= -pO->stride[1];
-         wrap[4]= -pO->stride[0]; wrap[5]= pO->stride[0] - pO->stride[1];
+      // left & right
+      #pragma acc parallel loop
+      for ( y= 1; y < end.y; ++y )
+      {
+         Scalar a, b, rab2;
+         const Index i1= y * pO->stride[1];
+         const Index j1= i1 + pO->stride[3];
+         a= pS[i1];
+         b= pS[j1];
+         rab2= pP->pKRR[0] * a * b * b;
+         pR[i1]= a + laplace2D4S9P(pS+i1, wrap+0, pP->kL.a) - rab2 + pP->pKRA[0] * (1 - a);
+         pR[j1]= b + laplace2D4S9P(pS+j1, wrap+0, pP->kL.b) + rab2 - pP->pKDB[y] * b;
 
-         // left & right
-         #pragma acc parallel loop
-         for ( y= 1; y < end.y; ++y )
-         {
-            Scalar a, b, rab2;
-            const Index i1= y * pO->stride[1];
-            const Index j1= i1 + pO->stride[3];
-            a= pS[i1];
-            b= pS[j1];
-            rab2= pP->pKRR[0] * a * b * b;
-            pR[i1]= a + laplace2D4S9P(pS+i1, wrap+0, pP->kL.a) - rab2 + pP->pKRA[0] * (1 - a);
-            pR[j1]= b + laplace2D4S9P(pS+j1, wrap+0, pP->kL.b) + rab2 - pP->pKDB[y] * b;
-
-            const Index offsX= pO->stride[1] - pO->stride[0];
-            const Index i2= i1 + offsX;
-            const Index j2= j1 + offsX;
-            a= pS[i2];
-            b= pS[j2];
-            rab2= pP->pKRR[end.x] * a * b * b;
-            pR[i2]= a + laplace2D4S9P(pS+i2, wrap+2, pP->kL.a) - rab2 + pP->pKRA[end.x] * (1 - a);
-            pR[j2]= b + laplace2D4S9P(pS+j2, wrap+2, pP->kL.b) + rab2 - pP->pKDB[y] * b;
-         }
+         const Index offsX= pO->stride[1] - pO->stride[0];
+         const Index i2= i1 + offsX;
+         const Index j2= j1 + offsX;
+         a= pS[i2];
+         b= pS[j2];
+         rab2= pP->pKRR[end.x] * a * b * b;
+         pR[i2]= a + laplace2D4S9P(pS+i2, wrap+2, pP->kL.a) - rab2 + pP->pKRA[end.x] * (1 - a);
+         pR[j2]= b + laplace2D4S9P(pS+j2, wrap+2, pP->kL.b) + rab2 - pP->pKDB[y] * b;
+      }
 #endif
 #if 1	// The four corners: R,L * B,T
-         //wrap[0]= def.x-1; wrap[1]= 1;
-         //wrap[2]= def.x; wrap[3]= def.x*(def.y-1);
-         //wrap[4]= -1; wrap[5]= 1-def.x;
+      wrap[0]= pO->stride[1] - pO->stride[0]; wrap[1]= pO->stride[0];
+      wrap[2]= pO->stride[1]; wrap[3]= pO->stride[2] - pO->stride[1];
+      wrap[4]= -pO->stride[0]; wrap[5]= pO->stride[0] - pO->stride[1];
 
-         wrap[0]= pO->stride[1] - pO->stride[0]; wrap[1]= pO->stride[0];
-         wrap[2]= pO->stride[1]; wrap[3]= pO->stride[2] - pO->stride[1];
-         wrap[4]= -pO->stride[0]; wrap[5]= pO->stride[0] - pO->stride[1];
-
-         //pragma acc parallel
-         {
+      //pragma acc parallel
+      {
          proc1(pR, pS, 0, pO->stride[3], wrap+0, pP);
          proc1(pR, pS, pO->stride[1]-pO->stride[0], pO->stride[3], wrap+2, pP);
 
@@ -258,21 +231,10 @@ void proc (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, 
 
          proc1(pR, pS, pO->stride[2]-pO->stride[1], pO->stride[3], wrap+0, pP);
          proc1(pR, pS, pO->stride[2]-pO->stride[0], pO->stride[3], wrap+2, pP);
-         }
+      }
 #endif
-         //if (iter < iterMax) { Scalar *pT= (Scalar*)pS; pS= pR; pR= pT; } // SWAP()
-      } // for iter < iterMax
    } // ... acc data ..
-   //pragma acc data update host( pR[0:pO->n] )
-   /*pragma data updateout( pR[0:pO->n] )
-   {
-      Scalar sum1=0, sum2= 0;
-      #pragma acc loop reduction(+:sum1)
-      for ( size_t i= 0; i < pO->n; ++i ) { const Scalar r= pR[i]; sum1+= r; sum2+= r * r; }
-      printf("proc() - sum:%G,%G\n", sum1, sum2);
-   }
-   return(iter);*/
-} // proc
+} // procA
 
 U32 proc2I1A (Scalar * restrict pR, Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP, const U32 iM)
 {
@@ -280,11 +242,11 @@ U32 proc2I1A (Scalar * restrict pR, Scalar * restrict pS, const ImgOrg * pO, con
       copyin( pS[:pO->n] ) present_or_copyin( pO[:1], pP[:1] ) \
       copyout( pR[:pO->n] )
    {
-      proc(pR,pS,pO,pP);
+      procA(pR,pS,pO,pP);
       for (U32 i= 0; i < iM; ++i )
       {
-         proc(pS,pR,pO,pP);
-         proc(pR,pS,pO,pP);
+         procA(pS,pR,pO,pP);
+         procA(pR,pS,pO,pP);
       }
    }
    return(2*iM+1);
