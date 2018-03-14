@@ -115,7 +115,7 @@ Bool32 procInitAcc (size_t f) // arg param ?
 #endif
    return(nInit > 0);
 } // procInitAcc
-
+/* DEPRECATE
 void procBindData (const HostBuff * const pHB, const ParamVal * const pP, const ImgOrg * const pO, const U32 iS)
 {
    return;
@@ -130,21 +130,16 @@ void procBindData (const HostBuff * const pHB, const ParamVal * const pP, const 
    #pragma acc data create( pR[0:pO->n] )
    ;
 } // procBindData
-
-
+*/
 void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP)
 {
-   //BoundaryWrap wrap; initWrap(&wrap,pO->stride);
-   const V2U32 end= {pO->def.x-1, pO->def.y-1};
-   U32 x, y, iter= 0;
-
    #pragma acc data present( pR[:pO->n], pS[:pO->n], pO[:1], pP[:1], pP->pKRR[:pP->n], pP->pKRA[:pP->n], pP->pKDB[:pP->n] )
    {
       #pragma acc parallel loop
-      for ( y= 1; y < end.y; ++y )
+      for (U32 y= 1; y < (pO->def.y-1); ++y )
       {
          #pragma acc loop vector
-         for ( x= 1; x < end.x; ++x )
+         for (U32 x= 1; x < (pO->def.x-1); ++x )
          {
             const Index i= y * pO->stride[1] + x * pO->stride[0];
             const Index j= i + pO->stride[3];
@@ -163,7 +158,7 @@ void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO,
 
       // Horizontal top & bottom
       #pragma acc parallel loop
-      for ( x= 1; x < end.x; ++x )
+      for (U32 x= 1; x < (pO->def.x-1); ++x )
       {
          const Index i1= x * pO->stride[0];
          const Index j1= i1 + pO->stride[3];
@@ -182,14 +177,14 @@ void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO,
          const Scalar b2= pS[j2];
          rab2= pP->pKRR[x] * a2 * b2 * b2;
          pR[i2]= a2 + laplace2D4S9P(pS+i2, pO->wrap.h+2, pP->kL.a) - rab2 + pP->pKRA[x] * (1 - a2);
-         pR[j2]= b2 + laplace2D4S9P(pS+j2, pO->wrap.h+2, pP->kL.b) + rab2 - pP->pKDB[end.y] * b2;
+         pR[j2]= b2 + laplace2D4S9P(pS+j2, pO->wrap.h+2, pP->kL.b) + rab2 - pP->pKDB[pO->def.y-1] * b2;
       }
 #endif
 #if 1
 
       // left & right
       #pragma acc parallel loop
-      for ( y= 1; y < end.y; ++y )
+      for (U32 y= 1; y < (pO->def.y-1); ++y )
       {
          Scalar a, b, rab2;
          const Index i1= y * pO->stride[1];
@@ -205,8 +200,8 @@ void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO,
          const Index j2= j1 + offsX;
          a= pS[i2];
          b= pS[j2];
-         rab2= pP->pKRR[end.x] * a * b * b;
-         pR[i2]= a + laplace2D4S9P(pS+i2, pO->wrap.v+2, pP->kL.a) - rab2 + pP->pKRA[end.x] * (1 - a);
+         rab2= pP->pKRR[pO->def.x-1] * a * b * b;
+         pR[i2]= a + laplace2D4S9P(pS+i2, pO->wrap.v+2, pP->kL.a) - rab2 + pP->pKRA[pO->def.x-1] * (1 - a);
          pR[j2]= b + laplace2D4S9P(pS+j2, pO->wrap.v+2, pP->kL.b) + rab2 - pP->pKDB[y] * b;
       }
 #endif
