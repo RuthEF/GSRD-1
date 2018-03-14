@@ -5,6 +5,23 @@
 
 /***/
 
+static void initWrap (BoundaryWrap *pW, const Stride stride[4])
+{
+   pW->h[0]= stride[1]; pW->h[1]= stride[2] - stride[1];	// 0..3 LO, 2..5 HI
+   pW->h[2]= -stride[0]; pW->h[3]= stride[0];
+   pW->h[4]= stride[1] - stride[2]; pW->h[5]= -stride[1];
+
+   pW->v[0]= stride[1] - stride[0]; pW->v[1]= stride[0];
+   pW->v[2]= stride[1]; pW->v[3]= -stride[1];
+   pW->v[4]= -stride[0]; pW->v[5]= stride[0] - stride[1];
+
+   pW->c[0]= stride[1] - stride[0]; pW->c[1]= stride[0];
+   pW->c[2]= stride[1]; pW->c[3]= stride[2] - stride[1];
+   pW->c[4]= -stride[0]; pW->c[5]= stride[0] - stride[1];
+   pW->d[0]= pW->c[0]; pW->d[1]= pW->c[1]; pW->d[4]= pW->c[4]; pW->d[5]= pW->c[5];
+   pW->d[2]= -pW->c[2]; pW->d[3]= -pW->c[3];
+} // initWrap
+
 void initOrg (ImgOrg * const pO, U16 w, U16 h, U8 flags)
 {
    if (pO)
@@ -24,6 +41,7 @@ void initOrg (ImgOrg * const pO, U16 w, U16 h, U8 flags)
       pO->stride[1]= w * pO->stride[0]; // line
       pO->stride[2]= h * pO->stride[1]; // plane
       pO->n= 2 * pO->stride[2]; // complete buffer
+      initWrap(&(pO->wrap), pO->stride);
    }
 } // initOrg
 

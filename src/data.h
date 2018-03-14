@@ -31,9 +31,15 @@ typedef struct
 
 typedef struct
 {
+   Stride h[6], v[6], c[6], d[6];
+} BoundaryWrap;
+
+typedef struct
+{
    V2U32  def;
    Stride stride[4];
    size_t n;
+   BoundaryWrap wrap;
 } ImgOrg;
 
 typedef struct
@@ -68,8 +74,8 @@ typedef struct
 
 /***/
 
+// void initWrap (BoundaryWrap *pW, const Stride stride[4]);
 extern void initOrg (ImgOrg * const pO, U16 w, U16 h, U8 flags);
-
 extern size_t initParam (ParamVal * const pP, const Scalar kl[3], const V2U32 * const pD, Scalar varR, Scalar varD); // ParamArgs *
 extern void releaseParam (ParamVal * const pP);
 
