@@ -131,11 +131,31 @@ void procBindData (const HostBuff * const pHB, const ParamVal * const pP, const 
    ;
 } // procBindData
 
+typedef struct
+{
+   Stride h[6], v[6], c[6], d[6];
+} BoundaryWrap;
+
 void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP)
 {
-   Stride wrap[6]; // LRBT strides for boundary wrap
+   BoundaryWrap wrap;
+   //Stride wrapH[6], wrapV[6], wrapC[6]; // LRBT strides for boundary wrap
    const V2U32 end= {pO->def.x-1, pO->def.y-1};
    U32 x, y, iter= 0;
+
+   wrap.h[0]= pO->stride[1]; wrap.h[1]= pO->stride[2] - pO->stride[1];	// 0..3 LO, 2..5 HI
+   wrap.h[2]= -pO->stride[0]; wrap.h[3]= pO->stride[0];
+   wrap.h[4]= pO->stride[1] - pO->stride[2]; wrap.h[5]= -pO->stride[1];
+
+   wrap.v[0]= pO->stride[1] - pO->stride[0]; wrap.v[1]= pO->stride[0];
+   wrap.v[2]= pO->stride[1]; wrap.v[3]= -pO->stride[1];
+   wrap.v[4]= -pO->stride[0]; wrap.v[5]= pO->stride[0] - pO->stride[1];
+
+   wrap.c[0]= pO->stride[1] - pO->stride[0]; wrap.c[1]= pO->stride[0];
+   wrap.c[2]= pO->stride[1]; wrap.c[3]= pO->stride[2] - pO->stride[1];
+   wrap.c[4]= -pO->stride[0]; wrap.c[5]= pO->stride[0] - pO->stride[1];
+   wrap.d[0]= wrap.c[0]; wrap.d[1]= wrap.c[1]; wrap.d[4]= wrap.c[4]; wrap.d[5]= wrap.c[5];
+   wrap.d[2]= -wrap.c[2]; wrap.d[3]= -wrap.c[3];
 
    #pragma acc data present( pR[:pO->n], pS[:pO->n], pO[:1], pP[:1], pP->pKRR[:pP->n], pP->pKRA[:pP->n], pP->pKDB[:pP->n] )
    {
@@ -159,9 +179,6 @@ void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO,
 
       // Boundaries
 #if 1 // Non-corner Edges
-      wrap[0]= pO->stride[1]; wrap[1]= pO->stride[2] - pO->stride[1];	// 0..3 LO, 2..5 HI
-      wrap[2]= -pO->stride[0]; wrap[3]= pO->stride[0];
-      wrap[4]= pO->stride[1] - pO->stride[2]; wrap[5]= -pO->stride[1];
 
       // Horizontal top & bottom
       #pragma acc parallel loop
@@ -174,8 +191,8 @@ void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO,
          Scalar rab2= pP->pKRR[x] * a1 * b1 * b1;
          //const Scalar ar1= KRA0 * (1 - a1);
          //const Scalar bd1= KDB0 * b1;
-         pR[i1]= a1 + laplace2D4S9P(pS+i1, wrap+0, pP->kL.a) - rab2 + pP->pKRA[x] * (1 - a1);
-         pR[j1]= b1 + laplace2D4S9P(pS+j1, wrap+0, pP->kL.b) + rab2 - pP->pKDB[0] * b1;
+         pR[i1]= a1 + laplace2D4S9P(pS+i1, wrap.h+0, pP->kL.a) - rab2 + pP->pKRA[x] * (1 - a1);
+         pR[j1]= b1 + laplace2D4S9P(pS+j1, wrap.h+0, pP->kL.b) + rab2 - pP->pKDB[0] * b1;
 
          const Stride offsY= pO->stride[2] - pO->stride[1];
          const Index i2= i1 + offsY;
@@ -183,14 +200,11 @@ void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO,
          const Scalar a2= pS[i2];
          const Scalar b2= pS[j2];
          rab2= pP->pKRR[x] * a2 * b2 * b2;
-         pR[i2]= a2 + laplace2D4S9P(pS+i2, wrap+2, pP->kL.a) - rab2 + pP->pKRA[x] * (1 - a2);
-         pR[j2]= b2 + laplace2D4S9P(pS+j2, wrap+2, pP->kL.b) + rab2 - pP->pKDB[end.y] * b2;
+         pR[i2]= a2 + laplace2D4S9P(pS+i2, wrap.h+2, pP->kL.a) - rab2 + pP->pKRA[x] * (1 - a2);
+         pR[j2]= b2 + laplace2D4S9P(pS+j2, wrap.h+2, pP->kL.b) + rab2 - pP->pKDB[end.y] * b2;
       }
 #endif
 #if 1
-      wrap[0]= pO->stride[1] - pO->stride[0]; wrap[1]= pO->stride[0];
-      wrap[2]= pO->stride[1]; wrap[3]= -pO->stride[1];
-      wrap[4]= -pO->stride[0]; wrap[5]= pO->stride[0] - pO->stride[1];
 
       // left & right
       #pragma acc parallel loop
@@ -202,8 +216,8 @@ void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO,
          a= pS[i1];
          b= pS[j1];
          rab2= pP->pKRR[0] * a * b * b;
-         pR[i1]= a + laplace2D4S9P(pS+i1, wrap+0, pP->kL.a) - rab2 + pP->pKRA[0] * (1 - a);
-         pR[j1]= b + laplace2D4S9P(pS+j1, wrap+0, pP->kL.b) + rab2 - pP->pKDB[y] * b;
+         pR[i1]= a + laplace2D4S9P(pS+i1, wrap.v+0, pP->kL.a) - rab2 + pP->pKRA[0] * (1 - a);
+         pR[j1]= b + laplace2D4S9P(pS+j1, wrap.v+0, pP->kL.b) + rab2 - pP->pKDB[y] * b;
 
          const Index offsX= pO->stride[1] - pO->stride[0];
          const Index i2= i1 + offsX;
@@ -211,26 +225,17 @@ void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO,
          a= pS[i2];
          b= pS[j2];
          rab2= pP->pKRR[end.x] * a * b * b;
-         pR[i2]= a + laplace2D4S9P(pS+i2, wrap+2, pP->kL.a) - rab2 + pP->pKRA[end.x] * (1 - a);
-         pR[j2]= b + laplace2D4S9P(pS+j2, wrap+2, pP->kL.b) + rab2 - pP->pKDB[y] * b;
+         pR[i2]= a + laplace2D4S9P(pS+i2, wrap.v+2, pP->kL.a) - rab2 + pP->pKRA[end.x] * (1 - a);
+         pR[j2]= b + laplace2D4S9P(pS+j2, wrap.v+2, pP->kL.b) + rab2 - pP->pKDB[y] * b;
       }
 #endif
 #if 1	// The four corners: R,L * B,T
-      wrap[0]= pO->stride[1] - pO->stride[0]; wrap[1]= pO->stride[0];
-      wrap[2]= pO->stride[1]; wrap[3]= pO->stride[2] - pO->stride[1];
-      wrap[4]= -pO->stride[0]; wrap[5]= pO->stride[0] - pO->stride[1];
-
       //pragma acc parallel
       {
-         proc1(pR, pS, 0, pO->stride[3], wrap+0, pP);
-         proc1(pR, pS, pO->stride[1]-pO->stride[0], pO->stride[3], wrap+2, pP);
-
-         //wrap[0]= def.x-1; wrap[1]= 1; 
-         //wrap[2]= -def.x*(def.y-1); wrap[3]= -def.x;
-         wrap[2]= -wrap[2]; wrap[3]= -wrap[3];
-
-         proc1(pR, pS, pO->stride[2]-pO->stride[1], pO->stride[3], wrap+0, pP);
-         proc1(pR, pS, pO->stride[2]-pO->stride[0], pO->stride[3], wrap+2, pP);
+         proc1(pR, pS, 0, pO->stride[3], wrap.c+0, pP);
+         proc1(pR, pS, pO->stride[1]-pO->stride[0], pO->stride[3], wrap.c+2, pP);
+         proc1(pR, pS, pO->stride[2]-pO->stride[1], pO->stride[3], wrap.d+0, pP);
+         proc1(pR, pS, pO->stride[2]-pO->stride[0], pO->stride[3], wrap.d+2, pP);
       }
 #endif
    } // ... acc data ..
@@ -252,7 +257,7 @@ U32 proc2IA (Scalar * restrict pTR, Scalar * restrict pSR, const ImgOrg * pO, co
 
 U32 proc2I1A (Scalar * restrict pR, Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP, const U32 nI)
 {
-   printf("proc2I1A()-\n");
+   //printf("proc2I1A()-\n");
    #pragma acc data region present_or_create( pR[:pO->n] ) present_or_copyin( pO[:1], pP[:1], pP->pKRR[:pP->n], pP->pKRA[:pP->n], pP->pKDB[:pP->n] ) \
                            copyin( pS[:pO->n] ) copyout( pR[:pO->n] )
    {
