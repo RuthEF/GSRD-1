@@ -25,8 +25,20 @@ typedef struct
 {
    KLAB   kL;
    Scalar kRR, kRA, kDB;
-   const Scalar *pKRR, *pKRA, *pKDB;
-   size_t n;
+   //const Scalar *pKRR, *pKRA, *pKDB;
+   //size_t n;
+} BaseParamVal;
+
+typedef struct
+{
+   Scalar *pK;
+   Stride iKRR, iKRA, iKDB;
+} VarParamVal;
+
+typedef struct
+{
+   BaseParamVal base;
+   VarParamVal  var;
 } ParamVal;
 
 typedef struct

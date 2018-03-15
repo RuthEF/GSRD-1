@@ -50,51 +50,48 @@ void initOrg (ImgOrg * const pO, U16 w, U16 h, U8 flags)
 size_t initParam (ParamVal * const pP, const Scalar kL[3], const V2U32 *pD, Scalar varR, Scalar varD) // ParamArgs *
 {
    U32 i, n= 0;
-   Scalar *pA, *pB, *pC;
-   // Set diffusion weights
-   for ( i= 0; i<3; ++i ) { pP->kL.a[i]= kL[i] * KLA0; pP->kL.b[i]= kL[i] * KLB0; }
-   pP->kRR= KR0;
-   pP->kRA= KRA0;
-   pP->kDB= KDB0;
-   pA= pB= pC= NULL;
+    // Set diffusion weights
+   for ( i= 0; i<3; ++i ) { pP->base.kL.a[i]= kL[i] * KLA0; pP->base.kL.b[i]= kL[i] * KLB0; }
+   pP->base.kRR= KR0;
+   pP->base.kRA= KRA0;
+   pP->base.kDB= KDB0;
+
+   pP->var.pK= NULL;
    if (pD)
    {
       n= MAX(pD->x, pD->y);
-      pA= malloc( n * sizeof(*(pP->pKRR)) );
-      if (pA) { pB= malloc( n * sizeof(*(pP->pKRA)) ); }
-      if (pB) { pC= malloc( n * sizeof(*(pP->pKDB)) ); }
+      pP->var.pK= malloc( 3 * n * sizeof(*(pP->var.pK)) );
    }
-   pP->n= n;
-   if (pC)
+   if (pP->var.pK)
    {
+      Scalar *pKRR, *pKRA, *pKDB;
       Scalar kRR=KR0, kRA=KRA0, kDB=KDB0;
       Scalar dKRR=0, dKRA=0, dKDB=0;
       
+      pP->var.iKRR= 0; pP->var.iKRA= pP->var.iKRR + n; pP->var.iKDB= pP->var.iKRA+n;
+      pKRR= pP->var.pK + pP->var.iKRR;
+      pKRA= pP->var.pK + pP->var.iKRA;
+      pKDB= pP->var.pK + pP->var.iKDB;
+
       dKRR= (kRR * varR) / n;
       dKDB= (kDB * varD) / n;
       for (i= 0; i<n; ++i)
       {
-         pA[i]= kRR; kRR+= dKRR;
-         pB[i]= kRA; kRA+= dKRA;
-         pC[i]= kDB; kDB+= dKDB;
+         pKRR[i]= kRR; kRR+= dKRR;
+         pKRA[i]= kRA; kRA+= dKRA;
+         pKDB[i]= kDB; kDB+= dKDB;
       }
-   } else
-   {
-      if (pA) { free(pA); }
-      if (pB) { free(pB); }
-      pA= pB= NULL;
    }
-   pP->pKRR= pA;
-   pP->pKRA= pB;
-   pP->pKDB= pC;
+   else
+   {
+      pP->var.iKRR= pP->var.iKRA= pP->var.iKDB= 0;
+   }
    return(n);
 } // initParam
 
 void releaseParam (ParamVal * const pP)
 {
-   free((void*)(pP->pKRR));
-   free((void*)(pP->pKRA));
-   free((void*)(pP->pKDB));
+   if (pP && pP->var.pK) { free(pP->var.pK); pP->var.pK= NULL; }
 } // releaseParam
 
 size_t initBuff (const HostBuff *pB, const V2U32 d, const U16 step)
@@ -137,7 +134,7 @@ void printFS (const char *pHdr, const FieldStat * const pFS, const char *pFtr)
    if (pHdr && pHdr[0]) { printf("%s", pHdr); }
    if (pFS)
    {  const char *fsFmtStr= "%G, %G, %G, %G";
-      if (sizeof(SSStat) > sizeof(double)) { fsFmtStr= "%G, %G, %LG, %LG"; }
+      if (sizeof(SMVal) > sizeof(double)) { fsFmtStr= "%G, %G, %LG, %LG"; }
       printf(fsFmtStr, pFS->min, pFS->max, pFS->s.m[1], pFS->s.m[2]);
    }
    if (pFtr && pFtr[0]) { printf("%s", pFtr); }

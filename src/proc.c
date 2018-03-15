@@ -41,18 +41,14 @@ INLINE Scalar laplace2D4S9P (const Scalar * const pS, const Stride s[4], const S
 } // laplace2D4S9P
 
 //#pragma acc routine vector
-INLINE void proc1 (Scalar * const pR, const Scalar * const pI, const int i, const int j, const Stride wrap[4], const ParamVal * const pP)
+INLINE void proc1 (Scalar * const pR, const Scalar * const pI, const Index i, const Stride j, const Stride wrap[4], const BaseParamVal * const pP)
 {
    const Scalar * const pA= pI+i, a= *pA;
    const Scalar * const pB= pI+i+j, b= *pB;
    const Scalar rab2= pP->kRR * a * b * b;
-#if 0
-   pR->pA[i]= a + LAPLACE2D4S9P(pA, wrap, pP->kL.a) - rab2 + pP->kRA * (1 - a);
-   pR->pB[i+j]= b + LAPLACE2D4S9P(pB, wrap, pP->kL.b) + rab2 - pP->kDB * b;
-#else
+
    pR[i]= a + laplace2D4S9P(pA, wrap, pP->kL.a) - rab2 + pP->kRA * (1 - a);
    pR[i+j]= b + laplace2D4S9P(pB, wrap, pP->kL.b) + rab2 - pP->kDB * b;
-#endif
 } // proc1
 
 /** EXT **/
@@ -131,7 +127,8 @@ void procBindData (const HostBuff * const pHB, const ParamVal * const pP, const 
    ;
 } // procBindData
 */
-void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP)
+/* Parameter variation
+void procVA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP)
 {
    #pragma acc data present( pR[:pO->n], pS[:pO->n], pO[:1], pP[:1], pP->pKRR[:pP->n], pP->pKRA[:pP->n], pP->pKDB[:pP->n] )
    {
@@ -215,6 +212,93 @@ void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO,
       }
 #endif
    } // ... acc data ..
+} // procVA
+*/
+// Simple parameters
+void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, const BaseParamVal * pP)
+{
+   #pragma acc data present( pR[:pO->n], pS[:pO->n], pO[:1], pP[:1] )
+   {
+      #pragma acc parallel loop
+      for (U32 y= 1; y < (pO->def.y-1); ++y )
+      {
+         #pragma acc loop vector
+         for (U32 x= 1; x < (pO->def.x-1); ++x )
+         {
+            const Index i= y * pO->stride[1] + x * pO->stride[0];
+            const Index j= i + pO->stride[3];
+            const Scalar a= pS[i];
+            const Scalar b= pS[j];
+            const Scalar rab2= pP->kRR * a * b * b;
+            //const Scalar ar= KRA0 * (1 - a);
+            //const Scalar bd= KDB0 * b;
+            pR[i]= a + laplace2D2S9P(pS+i, pO->stride, pP->kL.a) - rab2 + pP->kRA * (1 - a);
+            pR[j]= b + laplace2D2S9P(pS+j, pO->stride, pP->kL.b) + rab2 - pP->kDB * b;
+         }
+      }
+
+      // Boundaries
+#if 1 // Non-corner Edges
+
+      // Horizontal top & bottom
+      #pragma acc parallel loop
+      for (U32 x= 1; x < (pO->def.x-1); ++x )
+      {
+         const Index i1= x * pO->stride[0];
+         const Index j1= i1 + pO->stride[3];
+         const Scalar a1= pS[i1];
+         const Scalar b1= pS[j1];
+         Scalar rab2= pP->kRR * a1 * b1 * b1;
+         //const Scalar ar1= KRA0 * (1 - a1);
+         //const Scalar bd1= KDB0 * b1;
+         pR[i1]= a1 + laplace2D4S9P(pS+i1, pO->wrap.h+0, pP->kL.a) - rab2 + pP->kRA * (1 - a1);
+         pR[j1]= b1 + laplace2D4S9P(pS+j1, pO->wrap.h+0, pP->kL.b) + rab2 - pP->kDB * b1;
+
+         const Stride offsY= pO->stride[2] - pO->stride[1];
+         const Index i2= i1 + offsY;
+         const Index j2= j1 + offsY;
+         const Scalar a2= pS[i2];
+         const Scalar b2= pS[j2];
+         rab2= pP->kRR * a2 * b2 * b2;
+         pR[i2]= a2 + laplace2D4S9P(pS+i2, pO->wrap.h+2, pP->kL.a) - rab2 + pP->kRA * (1 - a2);
+         pR[j2]= b2 + laplace2D4S9P(pS+j2, pO->wrap.h+2, pP->kL.b) + rab2 - pP->kDB * b2;
+      }
+#endif
+#if 1
+
+      // left & right
+      #pragma acc parallel loop
+      for (U32 y= 1; y < (pO->def.y-1); ++y )
+      {
+         Scalar a, b, rab2;
+         const Index i1= y * pO->stride[1];
+         const Index j1= i1 + pO->stride[3];
+         a= pS[i1];
+         b= pS[j1];
+         rab2= pP->kRR * a * b * b;
+         pR[i1]= a + laplace2D4S9P(pS+i1, pO->wrap.v+0, pP->kL.a) - rab2 + pP->kRA * (1 - a);
+         pR[j1]= b + laplace2D4S9P(pS+j1, pO->wrap.v+0, pP->kL.b) + rab2 - pP->kDB * b;
+
+         const Index offsX= pO->stride[1] - pO->stride[0];
+         const Index i2= i1 + offsX;
+         const Index j2= j1 + offsX;
+         a= pS[i2];
+         b= pS[j2];
+         rab2= pP->kRR * a * b * b;
+         pR[i2]= a + laplace2D4S9P(pS+i2, pO->wrap.v+2, pP->kL.a) - rab2 + pP->kRA * (1 - a);
+         pR[j2]= b + laplace2D4S9P(pS+j2, pO->wrap.v+2, pP->kL.b) + rab2 - pP->kDB * b;
+      }
+#endif
+#if 1	// The four corners: R,L * B,T
+      //pragma acc parallel
+      {
+         proc1(pR, pS, 0, pO->stride[3], pO->wrap.c+0, pP);
+         proc1(pR, pS, pO->stride[1]-pO->stride[0], pO->stride[3], pO->wrap.c+2, pP);
+         proc1(pR, pS, pO->stride[2]-pO->stride[1], pO->stride[3], pO->wrap.d+0, pP);
+         proc1(pR, pS, pO->stride[2]-pO->stride[0], pO->stride[3], pO->wrap.d+2, pP);
+      }
+#endif
+   } // ... acc data ..
 } // procA
 
 U32 proc2IA (Scalar * restrict pTR, Scalar * restrict pSR, const ImgOrg * pO, const ParamVal * pP, const U32 nI)
@@ -224,8 +308,8 @@ U32 proc2IA (Scalar * restrict pTR, Scalar * restrict pSR, const ImgOrg * pO, co
    {
       for (U32 i= 0; i < nI; ++i )
       {
-         procA(pTR,pSR,pO,pP);
-         procA(pSR,pTR,pO,pP);
+         procA(pTR,pSR,pO,&(pP->base));
+         procA(pSR,pTR,pO,&(pP->base));
       }
    }
    return(2*nI);
@@ -237,11 +321,11 @@ U32 proc2I1A (Scalar * restrict pR, Scalar * restrict pS, const ImgOrg * pO, con
    #pragma acc data region present_or_create( pR[:pO->n] ) present_or_copyin( pO[:1], pP[:1], pP->pKRR[:pP->n], pP->pKRA[:pP->n], pP->pKDB[:pP->n] ) \
                            copyin( pS[:pO->n] ) copyout( pR[:pO->n] )
    {
-      procA(pR,pS,pO,pP);
+      procA(pR,pS,pO,&(pP->base));
       for (U32 i= 0; i < nI; ++i )
       {
-         procA(pS,pR,pO,pP);
-         procA(pR,pS,pO,pP);
+         procA(pS,pR,pO,&(pP->base));
+         procA(pR,pS,pO,&(pP->base));
       }
    }
    printf("-proc2I1A()\n");

@@ -47,9 +47,6 @@ typedef struct
    SMVal m[3];
 } StatMom;
 
-typedef double SSStat; // DEPRECATE: Scalar Sum Stat
-//typedef long double  SSStat; // not parallelisable with SSE or GPU
-
 typedef int Bool32;
 
 typedef struct
