@@ -303,7 +303,7 @@ void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO,
 
 U32 proc2IA (Scalar * restrict pTR, Scalar * restrict pSR, const ImgOrg * pO, const ParamVal * pP, const U32 nI)
 {
-   #pragma acc data region present_or_create( pTR[:pO->n] ) present_or_copyin( pO[:1], pP[:1], pP->pKRR[:pP->n], pP->pKRA[:pP->n], pP->pKDB[:pP->n] ) \
+   #pragma acc data region present_or_create( pTR[:pO->n] ) present_or_copyin( pO[:1], pP[:1], \
                            copy( pSR[:pO->n] )
    {
       for (U32 i= 0; i < nI; ++i )
@@ -318,7 +318,7 @@ U32 proc2IA (Scalar * restrict pTR, Scalar * restrict pSR, const ImgOrg * pO, co
 U32 proc2I1A (Scalar * restrict pR, Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP, const U32 nI)
 {
    //printf("proc2I1A()-\n");
-   #pragma acc data region present_or_create( pR[:pO->n] ) present_or_copyin( pO[:1], pP[:1], pP->pKRR[:pP->n], pP->pKRA[:pP->n], pP->pKDB[:pP->n] ) \
+   #pragma acc data region present_or_create( pR[:pO->n] ) present_or_copyin( pO[:1], pP[:1], \
                            copyin( pS[:pO->n] ) copyout( pR[:pO->n] )
    {
       procA(pR,pS,pO,&(pP->base));
