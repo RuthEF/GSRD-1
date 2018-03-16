@@ -5,7 +5,8 @@ CC       = pgcc
 CCFLAGS  = -c11 -Minfo=all
 
 # PGI Acceleration options
-ACCFLAGS = -fast -acc
+ACCFLAGS = -fast -acc=verystrict
+#ACCFLAGS = -O4 -Mautoinline -acc=verystrict
 #OPT = -ta=tesla:managed #ERR: malloc: call to cuMemAllocManaged returned error 3: Not initialized
 MAFLAGS  = $(ACCFLAGS) -ta=multicore $(OPT)
 GAFLAGS  = $(ACCFLAGS) -ta=nvidia:cc50 $(OPT)
