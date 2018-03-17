@@ -80,6 +80,20 @@ SMVal deltaT (void)
    return(dt);
 } // deltaT
 
+Bool32 statGetRes1 (StatRes1 * const pR, const StatMom * const pS, const SMVal dof)
+{
+   StatRes1 r={0,};
+   if (pS && (pS->m[0] > 0) && (dof >= 0))
+   {
+      r.m= pS->m[1] / pS->m[0];
+      r.v= ( pS->m[2] - ((pS->m[1] * pS->m[1]) / pS->m[0]) ) / (pS->m[0] - dof);
+      if (pR) { *pR= r; }
+      return(TRUE);
+   }
+   return(FALSE);
+} // statGetRes1
+
+
 int scanZ (size_t * const pZ, const char s[])
 {
    const char *pE=NULL;

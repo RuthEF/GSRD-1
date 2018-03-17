@@ -33,6 +33,8 @@
 #define FALSE (0)
 #endif
 
+typedef int Bool32;
+
 typedef signed char  I8;
 typedef signed short I16;
 typedef signed long  I32;
@@ -46,6 +48,11 @@ typedef struct
 {
    SMVal m[3];
 } StatMom;
+
+typedef struct
+{
+   SMVal m,v;
+} StatRes1;
 
 typedef int Bool32;
 
@@ -87,6 +94,7 @@ extern size_t loadBuff (void * const pB, const char * const path, const size_t b
 extern size_t saveBuff (const void * const pB, const char * const path, const size_t bytes);
 
 extern SMVal deltaT (void);
+extern Bool32 statGetRes1 (StatRes1 * const pR, const StatMom * const pS, const SMVal dof);
 
 // extern const char *sc (const char *s, const char c, const char * const e, const I8 o);
 //extern int scanVI (int v[], const int vMax, ScanSeg * const pSS, const char s[]);

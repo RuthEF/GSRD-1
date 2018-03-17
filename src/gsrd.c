@@ -111,7 +111,7 @@ void summarise (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * c
    if (pS) { *pS= s; }
    //else
    {
-      printf("summarise() - \n\t   min, max, sum1, sum2\n");
+      printf("summarise() - \n\t   min, max, sum, mean, var\n");
       printFS("\tA: ", &(s.a), "\n");
       printFS("\tB: ", &(s.b), "\n");
    }

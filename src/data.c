@@ -133,9 +133,16 @@ void printFS (const char *pHdr, const FieldStat * const pFS, const char *pFtr)
 {
    if (pHdr && pHdr[0]) { printf("%s", pHdr); }
    if (pFS)
-   {  const char *fsFmtStr= "%G, %G, %G, %G";
-      if (sizeof(SMVal) > sizeof(double)) { fsFmtStr= "%G, %G, %LG, %LG"; }
-      printf(fsFmtStr, pFS->min, pFS->max, pFS->s.m[1], pFS->s.m[2]);
+   {
+      StatRes1 r;
+
+      printf("%G, %G", pFS->min, pFS->max);
+
+      //if (sizeof(SMVal) > sizeof(double)) { fsFmtStr= "%LG, %LG"; }
+      if ( statGetRes1(&r, &(pFS->s), 0) )
+      {
+         printf(", %G, %G, %G", pFS->s.m[1], r.m, r.v); //sqrtf(r.v));
+      }
    }
    if (pFtr && pFtr[0]) { printf("%s", pFtr); }
 } // printFS
