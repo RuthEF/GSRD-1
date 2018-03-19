@@ -10,6 +10,7 @@
 #define KLA0 (Scalar)0.25
 #define KLB0 (Scalar)0.025
 
+#define HFB_MAX   (2)
 
 //typedef float      Scalar;
 typedef double       Scalar;
@@ -25,8 +26,6 @@ typedef struct
 {
    KLAB   kL;
    Scalar kRR, kRA, kDB;
-   //const Scalar *pKRR, *pKRA, *pKDB;
-   //size_t n;
 } BaseParamVal;
 
 typedef struct
@@ -67,12 +66,6 @@ typedef struct
 
 typedef struct
 {
-   Scalar *pAB[2], *pC;
-} HostBuff;
-
-
-typedef struct
-{
    Scalar min, max;
    StatMom s;
 } FieldStat;
@@ -82,6 +75,19 @@ typedef struct
    FieldStat a, b;
 } BlockStat;
 
+typedef struct
+{
+   Scalar      *pAB;
+   BlockStat   s;
+   size_t      iter;
+} HostFB;
+
+typedef struct
+{
+   HostFB   hfb[HFB_MAX];
+   Scalar   *pC; // *pAB[2], ;
+} HostBuffTab;
+
 
 /***/
 
@@ -90,7 +96,7 @@ extern void initOrg (ImgOrg * const pO, U16 w, U16 h, U8 flags);
 extern size_t initParam (ParamVal * const pP, const Scalar kl[3], const V2U32 * const pD, Scalar varR, Scalar varD); // ParamArgs *
 extern void releaseParam (ParamVal * const pP);
 
-extern size_t initBuff (const HostBuff *pB, const V2U32 d, const U16 step);
+extern size_t initHFB (HostFB * const pB, const V2U32 d, const U16 step);
 
 extern void initFS (FieldStat * const pFS, const Scalar * const pS);
 extern void printFS (const char *pHdr, const FieldStat * const pFS, const char *pFtr);

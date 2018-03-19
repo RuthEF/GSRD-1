@@ -54,8 +54,6 @@ typedef struct
    SMVal m,v;
 } StatRes1;
 
-typedef int Bool32;
-
 typedef struct
 {
    size_t bytes;

@@ -94,23 +94,25 @@ void releaseParam (ParamVal * const pP)
    if (pP && pP->var.pK) { free(pP->var.pK); pP->var.pK= NULL; }
 } // releaseParam
 
-size_t initBuff (const HostBuff *pB, const V2U32 d, const U16 step)
+size_t initHFB (HostFB * const pB, const V2U32 d, const U16 step)
 {
    const size_t n= d.x * d.y;
    size_t  i, nB= 0;
    U16 x, y;
-   
-   for ( i= 0; i < n; ++i ) { pB->pAB[0][i]= 1.0; pB->pAB[0][n+i]= 0.0; }
+   // HACKY: assumes planar org.
+   for ( i= 0; i < n; ++i ) { pB->pAB[i]= 1.0; pB->pAB[n+i]= 0.0; }
    for ( y= step; y < d.y; y+= step )
    {
       for ( x= step; x < d.x; x+= step )
       {
          i= y * d.x + x;
-         if (i < n) { pB->pAB[0][n+i]= 1.0; nB++; }
+         if (i < n) { pB->pAB[n+i]= 1.0; nB++; }
       }
    }
+   pB->iter= 0;
+   // stat ?
    return(nB);
-} // initBuff
+} // initHFB
 
 
 void initFS (FieldStat * const pFS, const Scalar * const pS)

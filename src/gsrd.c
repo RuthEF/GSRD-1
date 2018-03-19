@@ -3,11 +3,11 @@
 
 typedef struct
 {
-   MemBuff  buff; // DEPRECATE
-   ParamVal pv;
-   HostBuff hb;
-   ImgOrg   org;
-   U32      i;
+   //MemBuff  buff; DEPRECATED
+   ParamVal    pv;
+   HostBuffTab hbt;
+   ImgOrg      org;
+   U32         i;
 } Context;
 
 /***/
@@ -18,6 +18,28 @@ static Context gCtx={0};
 
 /***/
 
+Bool32 initHBT (HostBuffTab * const pT, const size_t fb, const U16 nF)
+{
+   int i= 0;
+
+   memset(pT, -1, sizeof(*pT));
+   if (nF >= 5) { pT->pC= malloc(fb / 2); } else { pT->pC= NULL; }
+   do
+   {
+      pT->hfb[i].pAB= malloc(fb);
+   } while (pT->hfb[i].pAB && (++i < HFB_MAX));
+   return(i == HFB_MAX);
+} // initHBT
+
+void releaseHBT (HostBuffTab * const pT)
+{
+   for ( int i= 0; i< HFB_MAX; ++i )
+   { 
+      if (pT->hfb[i].pAB) { free(pT->hfb[i].pAB); pT->hfb[i].pAB= NULL; }
+   }
+   if (pT->pC) { free(pT->pC); pT->pC= NULL; }
+} // releaseHBT
+
 Context *initCtx (Context * const pC, U16 w, U16 h, U16 nF)
 {
    if (0 == w) { w= 256; }
@@ -25,7 +47,7 @@ Context *initCtx (Context * const pC, U16 w, U16 h, U16 nF)
    if (0 == nF) { nF= 4; }
    const size_t n= w * h;
    const size_t b2F= 2 * n * sizeof(Scalar);
-   pC->buff.p= NULL; pC->buff.bytes= 0;
+   //pC->buff.p= NULL; pC->buff.bytes= 0;
    if (b2F > n)
    {
       initParam(&(pC->pv), gKL, &(pC->org.def), 0.100, 0.005);
@@ -33,11 +55,8 @@ Context *initCtx (Context * const pC, U16 w, U16 h, U16 nF)
 
       initOrg(&(pC->org), w, h, 0);
       
-      pC->hb.pAB[0]= malloc(b2F);
-      pC->hb.pAB[1]= malloc(b2F);
-      if (pC->hb.pAB[0] && pC->hb.pAB[1])
+      if (initHBT(&(pC->hbt), b2F, nF))
       {
-         if (nF >= 5) { pC->hb.pC= malloc(b2F / 2); } else { pC->hb.pC= NULL; }
          pC->i= 0;
          return(pC);
       }
@@ -50,8 +69,7 @@ void releaseCtx (Context * const pC)
    if (pC)
    {
       releaseParam(&(pC->pv));
-      free(pC->hb.pAB[0]);
-      free(pC->hb.pAB[1]);
+      releaseHBT(&(pC->hbt));
       memset(pC, 0, sizeof(*pC));
    }
 } // releaseCtx
@@ -148,11 +166,10 @@ int main ( int argc, char* argv[] )
       SMVal tE0=0, tE1=0;
       BlockStat bs={0};
 
-      if (0 == loadBuff(gCtx.hb.pAB[0], pDFI->path, pDFI->bytes))
-         //printf("nB=%zu\n",
+      if (0 == loadBuff(gCtx.hbt.hfb[0].pAB, pDFI->path, pDFI->bytes))  //printf("nB=%zu\n",
       {
-         initBuff(&(gCtx.hb), gCtx.org.def, 32);
-         saveFrame(gCtx.hb.pAB[0], gCtx.org.def, gCtx.i);
+         initHFB(gCtx.hbt.hfb+0, gCtx.org.def, 32);
+         saveFrame(gCtx.hbt.hfb[0].pAB, gCtx.org.def, gCtx.i);
       }
       if (pPI->subIter > 0) { iM= pPI->subIter; }
       //printf("iter=%zu,%zu\n", pPI->subIter, pPI->maxIter);
@@ -166,15 +183,15 @@ int main ( int argc, char* argv[] )
          if (iM > iR) { iM= iR; }
 
          deltaT();
-         gCtx.i+= proc2I1A(gCtx.hb.pAB[(k^0x1)], gCtx.hb.pAB[k], &(gCtx.org), &(gCtx.pv), iM>>1);
+         gCtx.i+= proc2I1A(gCtx.hbt.hfb[(k^0x1)].pAB, gCtx.hbt.hfb[k].pAB, &(gCtx.org), &(gCtx.pv), iM>>1);
          tE0= deltaT();
          tE1+= tE0;
          
          k= gCtx.i & 0x1;
-         summarise(&bs, gCtx.hb.pAB[k], &(gCtx.org));
+         summarise(&bs, gCtx.hbt.hfb[k].pAB, &(gCtx.org));
          printf("\ttE= %G, %G\n", tE0, tE1);
 
-         saveFrame(gCtx.hb.pAB[k], gCtx.org.def, gCtx.i);
+         saveFrame(gCtx.hbt.hfb[k].pAB, gCtx.org.def, gCtx.i);
       } while (gCtx.i < pPI->maxIter);
       releaseCtx(&gCtx);
    }
