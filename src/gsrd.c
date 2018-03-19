@@ -101,7 +101,7 @@ void bindCtx (const Context * pC)
    //procBindData( &(pC->hb), &(pC->pv), &(pC->org), pC->i );
 } // bindCtx
 
-void summarise (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * const pO)
+void frameStat (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * const pO)
 {
    const size_t n= pO->def.x * pO->def.y;
    const Scalar * const pA= pAB;
@@ -127,12 +127,14 @@ void summarise (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * c
    }
    s.a.s.m[0]= s.b.s.m[0]= n;
    if (pS) { *pS= s; }
-   //else
-   {
-      printf("summarise() - \n\t   min, max, sum, mean, var\n");
-      printFS("\tA: ", &(s.a), "\n");
-      printFS("\tB: ", &(s.b), "\n");
-   }
+} // frameStat
+
+void summarise (HostFB * const pF, const ImgOrg * const pO)
+{
+   frameStat(&(pF->s), pF->pAB, pO);
+   printf("summarise() - \n\t%zu\tmin\tmax\tsum\tmean\tvar\n", pF->iter);
+   printFS("\tA:\t", &(pF->s.a), "\n");
+   printFS("\tB:\t", &(pF->s.b), "\n");
 } // summarise
 
 int main ( int argc, char* argv[] )
@@ -184,14 +186,15 @@ int main ( int argc, char* argv[] )
          if (iM > iR) { iM= iR; }
 
          deltaT();
-         gCtx.i+= proc2I1A(gCtx.hbt.hfb[(k^0x1)].pAB, gCtx.hbt.hfb[k].pAB, &(gCtx.org), &(gCtx.pv), iM>>1);
+         gCtx.i+= proc2I1A(gCtx.hbt.hfb[(k^0x1)].pAB, pFrame->pAB, &(gCtx.org), &(gCtx.pv), iM>>1);
          tE0= deltaT();
          tE1+= tE0;
          
          k= gCtx.i & 0x1;
          pFrame= gCtx.hbt.hfb+k;
+         pFrame->iter= gCtx.i;
 
-         summarise(&(pFrame->s), pFrame->pAB, &(gCtx.org));
+         summarise(pFrame, &(gCtx.org));
          printf("\ttE= %G, %G\n", tE0, tE1);
 
          saveFrame(pFrame->pAB, gCtx.org.def, gCtx.i);

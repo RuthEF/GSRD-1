@@ -138,12 +138,12 @@ void printFS (const char *pHdr, const FieldStat * const pFS, const char *pFtr)
    {
       StatRes1 r;
 
-      printf("%G, %G", pFS->min, pFS->max);
+      printf("%G\t%G", pFS->min, pFS->max);
 
       //if (sizeof(SMVal) > sizeof(double)) { fsFmtStr= "%LG, %LG"; }
       if ( statGetRes1(&r, &(pFS->s), 0) )
       {
-         printf(", %G, %G, %G", pFS->s.m[1], r.m, r.v); //sqrtf(r.v));
+         printf("\t%G\t%G\t%G", pFS->s.m[1], r.m, r.v); //sqrtf(r.v));
       }
    }
    if (pFtr && pFtr[0]) { printf("%s", pFtr); }
