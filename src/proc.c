@@ -317,7 +317,6 @@ U32 proc2IA (Scalar * restrict pTR, Scalar * restrict pSR, const ImgOrg * pO, co
 
 U32 proc2I1A (Scalar * restrict pR, Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP, const U32 nI)
 {
-   //printf("proc2I1A()-\n");
    #pragma acc data present_or_create( pR[:pO->n] ) present_or_copyin( pO[:1], pP[:1] ) \
                     copyin( pS[:pO->n] ) copyout( pR[:pO->n] )
    {
@@ -328,11 +327,10 @@ U32 proc2I1A (Scalar * restrict pR, Scalar * restrict pS, const ImgOrg * pO, con
          procA(pR,pS,pO,&(pP->base));
       }
    }
-   printf("-proc2I1A()\n");
    return(2*nI+1);
 } // proc2I1A
 
-void procSummarise (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * const pO)
+void procFrameStat (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * const pO)
 {
    const size_t n= pO->def.x * pO->def.y;
    BlockStat s;
@@ -349,22 +347,16 @@ void procSummarise (BlockStat * const pS, const Scalar * const pAB, const ImgOrg
          const Scalar a= pAB[j];
          if (a < s.a.min) { s.a.min= a; }
          if (a > s.a.max) { s.a.max= a; }
-         s.a.s.m[1]+= a;      //sum1+= a;
-         s.a.s.m[2]+= a * a;  // sum2+= a * a;
+         s.a.s.m[1]+= a;
+         s.a.s.m[2]+= a * a;
          const Scalar b= pAB[k];
          if (b < s.b.min) { s.b.min= b; }
          if (b > s.b.max) { s.b.max= b; }
-         s.b.s.m[1]+= b;      //sum1+= b;
-         s.b.s.m[2]+= b * b;  //sum2+= b * b;
+         s.b.s.m[1]+= b;
+         s.b.s.m[2]+= b * b;
       }
       s.a.s.m[0]= s.b.s.m[0]= n;
    }
    if (pS) { *pS= s; }
-   //else
-   {
-      printf("summarise() - \n\t   min, max, sum1, sum2\n");
-      printFS("\tA: ", &(s.a), "\n");
-      printFS("\tB: ", &(s.b), "\n");
-   }
-} // procSummarise
+} // procFrameStat
 
