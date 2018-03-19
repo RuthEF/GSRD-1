@@ -102,7 +102,7 @@ void bindCtx (const Context * pC)
 } // bindCtx
 
 void summarise (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * const pO)
-{  // HACKY ignores interleaving/padding
+{
    const size_t n= pO->def.x * pO->def.y;
    const Scalar * const pA= pAB;
    const Scalar * const pB= pAB + pO->stride[3];
@@ -117,13 +117,13 @@ void summarise (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * c
       const Scalar a= pA[j];
       if (a < s.a.min) { s.a.min= a; }
       if (a > s.a.max) { s.a.max= a; }
-      s.a.s.m[1]+= a;      //sum1+= a;
-      s.a.s.m[2]+= a * a;  // sum2+= a * a;
+      s.a.s.m[1]+= a;
+      s.a.s.m[2]+= a * a;
       const Scalar b= pB[j];
       if (b < s.b.min) { s.b.min= b; }
       if (b > s.b.max) { s.b.max= b; }
-      s.b.s.m[1]+= b;      //sum1+= b;
-      s.b.s.m[2]+= b * b;  //sum2+= b * b;
+      s.b.s.m[1]+= b;
+      s.b.s.m[2]+= b * b;
    }
    s.a.s.m[0]= s.b.s.m[0]= n;
    if (pS) { *pS= s; }
@@ -164,12 +164,12 @@ int main ( int argc, char* argv[] )
    {
       size_t i= 0, iM= pPI->maxIter, iR;
       SMVal tE0=0, tE1=0;
-      BlockStat bs={0};
-
-      if (0 == loadBuff(gCtx.hbt.hfb[0].pAB, pDFI->path, pDFI->bytes))  //printf("nB=%zu\n",
+      //BlockStat bs={0};
+      HostFB *pFrame= gCtx.hbt.hfb+0;
+      if (0 == loadBuff(pFrame->pAB, pDFI->path, pDFI->bytes))  //printf("nB=%zu\n",
       {
-         initHFB(gCtx.hbt.hfb+0, gCtx.org.def, 32);
-         saveFrame(gCtx.hbt.hfb[0].pAB, gCtx.org.def, gCtx.i);
+         initHFB(pFrame, gCtx.org.def, 32);
+         saveFrame(pFrame->pAB, gCtx.org.def, gCtx.i);
       }
       if (pPI->subIter > 0) { iM= pPI->subIter; }
       //printf("iter=%zu,%zu\n", pPI->subIter, pPI->maxIter);
@@ -178,6 +178,7 @@ int main ( int argc, char* argv[] )
       do
       {
          int k= gCtx.i & 0x1;
+         pFrame= gCtx.hbt.hfb+k;
 
          iR= pPI->maxIter - gCtx.i;
          if (iM > iR) { iM= iR; }
@@ -188,10 +189,12 @@ int main ( int argc, char* argv[] )
          tE1+= tE0;
          
          k= gCtx.i & 0x1;
-         summarise(&bs, gCtx.hbt.hfb[k].pAB, &(gCtx.org));
+         pFrame= gCtx.hbt.hfb+k;
+
+         summarise(&(pFrame->s), pFrame->pAB, &(gCtx.org));
          printf("\ttE= %G, %G\n", tE0, tE1);
 
-         saveFrame(gCtx.hbt.hfb[k].pAB, gCtx.org.def, gCtx.i);
+         saveFrame(pFrame->pAB, gCtx.org.def, gCtx.i);
       } while (gCtx.i < pPI->maxIter);
       releaseCtx(&gCtx);
    }
