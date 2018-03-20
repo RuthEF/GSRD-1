@@ -130,8 +130,8 @@ void frameStat (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * c
 } // frameStat
 
 void summarise (HostFB * const pF, const ImgOrg * const pO)
-{
-   procFrameStat(&(pF->s), pF->pAB, pO);
+{  //procF
+   frameStat(&(pF->s), pF->pAB, pO);
    printf("summarise() - \n\t%zu\tmin\tmax\tsum\tmean\tvar\n", pF->iter);
    printFS("\tA:\t", &(pF->s.a), "\n");
    printFS("\tB:\t", &(pF->s.b), "\n");

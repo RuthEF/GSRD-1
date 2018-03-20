@@ -96,37 +96,27 @@ Bool32 procInitAcc (size_t f) // arg param ?
    int nNV= acc_get_num_devices( acc_device_nvidia );
    int nH= acc_get_num_devices( acc_device_host );
    int nNH= acc_get_num_devices( acc_device_not_host );
-   
+   int id;
+
    printf("procInitAcc() - nNV=%d, nH=%d (other=%d)\n", nNV, nH, nNH - nNV);
    if ((nNV > 0) && (f & PROC_FLAG_ACCGPU))
    {
       acc_init( acc_device_nvidia ); // get_err?
+      id= acc_get_device_num(acc_device_nvidia);
+      printf("\tNV:id=%d\n", id);
       ++nInit;
    }
-   else if ((nH > 0) && (f & PROC_FLAG_ACCHOST))
+   if ((nH > 0) && (f & PROC_FLAG_ACCHOST))
    {
       acc_init( acc_device_host );
+      id= acc_get_device_num(acc_device_host);
+      printf("\tH:id=%d\n", id);
       ++nInit;
    }
 #endif
    return(nInit > 0);
 } // procInitAcc
-/* DEPRECATE
-void procBindData (const HostBuff * const pHB, const ParamVal * const pP, const ImgOrg * const pO, const U32 iS)
-{
-   return;
-   U32 iR = iS ^ 1;
-   Scalar * restrict pS= pHB->pAB[iS];
-   Scalar * restrict pR= pHB->pAB[iR];
 
-   printf("procBindData() - pP=%p, pO=%p\n", pP, pO);
-   #pragma acc data copyin( pP[0:1], pO[0:1] )
-   #pragma acc data copyin( pP->pKRR[0:pP->n], pP->pKRA[0:pP->n], pP->pKDB[0:pP->n] )
-   #pragma acc data copyin( pS[0:pO->n] )
-   #pragma acc data create( pR[0:pO->n] )
-   ;
-} // procBindData
-*/
 /* Parameter variation
 void procVA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP)
 {
