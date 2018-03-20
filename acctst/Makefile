@@ -1,30 +1,50 @@
-CC      = pgcc -c11 -Minfo
-CCFLAGS =
+CC      = pgcc
+CCFLAGS = -c11 -Minfo=all
 ACCFLAGS= -acc -fast -ta=tesla:cc50
-
-OBJ = o
+TARGET= acctst
+OBJEXT = o
 
 # Other environments, compilers, options...
 UNAME := $(shell uname -a)
+
+ifeq ($(findstring CYGWIN_NT, $(UNAME)), CYGWIN_NT)
+TARGET = $(TARGET).exe
+OBJEXT = obj
+endif
+
 ifeq ($(findstring Darwin, $(UNAME)), Darwin)
-CC       = clang -std=c11 -W
+CC      = clang
+CCFLAGS = -std=c11 -W
+ACCFLAGS=
+endif
+
+# Check compiler & fall back to standard LINUX tools if necessary
+CCOUT := $(shell $(CC) 2>&1)
+
+ifeq ($(findstring "not found", $(CCOUT)), "not found")
+# Catch-all disnae work...
+CC       = gcc
+CCFLAGS  = -std=c11 -W
 ACCFLAGS =
 endif
-ifeq ($(findstring CYGWIN_NT, $(UNAME)), CYGWIN_NT)
-EXE	= exe
+
+ifeq ($(findstring RPi, $(UNAME)), RPi)
+CC       = gcc
+CCFLAGS  = -std=c11 -W
+ACCFLAGS =
 endif
 
 all: build run verify
 
 build: acctst.c
-	$(CC) $(CCFLAGS) $(ACCFLAGS) -o acctst $<
+	$(CC) $(CCFLAGS) $(ACCFLAGS) -o $(TARGET) $<
 
-run: acctst
-	./acctst 0
+run: $(TARGET)
+	./$(TARGET) 0
 
 verify:
 
 
 clean:
 	@echo 'Cleaning up...'
-	@rm -rf acctst *.o *.dwf *.pdb prof
+	@rm -rf $(TARGET) *.$(OBJEXT) *.dwf *.pdb prof

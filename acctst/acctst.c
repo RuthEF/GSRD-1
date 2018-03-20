@@ -6,8 +6,9 @@
 #ifdef __PGI   // HACK
 #define INLINE inline
 //#include <linux/ktime.h>
-#else // clang
+#else // gcc/clang
 #define INLINE
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
 #pragma clang diagnostic ignored "-Wmissing-field-initializers"
 #endif
 
@@ -146,7 +147,6 @@ int initBuff (DataContext *pDC, const size_t n, const unsigned char alignShift)
 {
    const size_t am= (1 << alignShift) - 1;
    const size_t b= alignPo2M(sizeof(Scalar) * n, am);
-   size_t i;
  
    pDC->buff.p= NULL;
    pDC->n= n;
@@ -343,7 +343,7 @@ int main( int argc, char* argv[] )
       }
       printf("Secondary buffers R2 vs. E2\n");
       size_t aux= analyse(&a, dc.pR2, dc.pE2, dc.n, 5, 1E-30);
-      printf("\t%zu discrepancies\n", a.d.nD );
+      printf("\t%zu discrepancies ([2]->%zu)\n", a.d.nD, aux);
    }
    release(&dc);
    return(-(sumErr > 0));
