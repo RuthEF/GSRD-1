@@ -99,19 +99,35 @@ Bool32 procInitAcc (size_t f) // arg param ?
    int id;
 
    printf("procInitAcc() - nNV=%d, nH=%d (other=%d)\n", nNV, nH, nNH - nNV);
-   if ((nNV > 0) && (f & PROC_FLAG_ACCGPU))
+   if (nNV > 0)
    {
-      acc_init( acc_device_nvidia ); // get_err?
       id= acc_get_device_num(acc_device_nvidia);
       printf("\tNV:id=%d\n", id);
-      ++nInit;
+      if (f & PROC_FLAG_ACCGPU)
+      {
+         id= nNV;
+         while (--id >= 0)
+         {
+            acc_set_device_num( id, acc_device_nvidia );
+            acc_init( acc_device_nvidia ); // get_err?
+            ++nInit;
+         }
+      }
    }
-   if ((nH > 0) && (f & PROC_FLAG_ACCHOST))
+   if (nH > 0)
    {
-      acc_init( acc_device_host );
       id= acc_get_device_num(acc_device_host);
       printf("\tH:id=%d\n", id);
-      ++nInit;
+      if (f & PROC_FLAG_ACCHOST))
+      {
+         id= nNH;
+         while (--id >= 0)
+         {
+            acc_set_device_num( id, acc_device_host );
+            acc_init( acc_device_host );
+            ++nInit;
+         }
+      }
    }
 #endif
    return(nInit > 0);
