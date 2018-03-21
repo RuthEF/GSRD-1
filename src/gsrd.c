@@ -177,6 +177,7 @@ int main ( int argc, char* argv[] )
          tE0= tE1= 0;
          iM= pPI->maxIter;
          if (pPI->subIter > 0) { iM= pPI->subIter; }
+         gCtx.i= 0;
          pFrame= gCtx.hbt.hfb+0;
          if (0 == loadBuff(pFrame->pAB, pDFI->path, pDFI->bytes))  //printf("nB=%zu\n",
          {
