@@ -22,7 +22,9 @@
 #ifndef SWAP
 #define SWAP(Type,a,b) { Type tmp= (a); (a)= (b); (b)= tmp; }
 #endif
-
+#ifndef MIN
+#define MIN(a,b) (a)<(b)?(a):(b)
+#endif
 #ifndef MAX
 #define MAX(a,b) (a)>(b)?(a):(b)
 #endif

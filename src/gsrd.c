@@ -107,23 +107,33 @@ void frameStat (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * c
    const Scalar * const pA= pAB;
    const Scalar * const pB= pAB + pO->stride[3];
    BlockStat s;
-   
+   size_t i, zI[50], nZ= 0;
+
    initFS(&(s.a), pA);
    initFS(&(s.b), pB);
    
-   for (size_t i=1; i<n; i++)
+   for (i=1; i<n; i++)
    {
       const Index j= i * pO->stride[0];
       const Scalar a= pA[j];
+      const Scalar b= pB[j];
+      if ((0 == a) || (0 == b)) { if (nZ < 50) { zI[nZ]= i; } nZ++; }
       if (a < s.a.min) { s.a.min= a; }
       if (a > s.a.max) { s.a.max= a; }
       s.a.s.m[1]+= a;
       s.a.s.m[2]+= a * a;
-      const Scalar b= pB[j];
       if (b < s.b.min) { s.b.min= b; }
       if (b > s.b.max) { s.b.max= b; }
       s.b.s.m[1]+= b;
       s.b.s.m[2]+= b * b;
+   }
+   if (nZ > 0)
+   {
+      size_t mZ= MIN(50, nZ);
+      printf("%zu zeros: %zu", nZ, zI[0]);
+      i= 1;
+      while (i < mZ) { printf(", %zu", zI[i++]); }
+      printf("\n");
    }
    s.a.s.m[0]= s.b.s.m[0]= n;
    if (pS) { *pS= s; }
