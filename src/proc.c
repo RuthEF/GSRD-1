@@ -118,7 +118,7 @@ Bool32 procInitAcc (size_t f) // arg param ?
    {
       id= acc_get_device_num(acc_device_host);
       printf("\tH:id=%d\n", id);
-      if (f & PROC_FLAG_ACCHOST))
+      if (f & PROC_FLAG_ACCHOST)
       {
          id= nNH;
          while (--id >= 0)
