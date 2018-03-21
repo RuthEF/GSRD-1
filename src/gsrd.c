@@ -95,12 +95,6 @@ size_t saveFrame (const Scalar * const pB, const V2U32 def, const U32 iNum)
    return(r);
 } // saveFrame
 
-void bindCtx (const Context * pC)
-{
-   if (pC) { ; }
-   //procBindData( &(pC->hb), &(pC->pv), &(pC->org), pC->i );
-} // bindCtx
-
 void frameStat (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * const pO)
 {
    const size_t n= pO->def.x * pO->def.y;
@@ -186,29 +180,32 @@ int main ( int argc, char* argv[] )
       if (pPI->subIter > 0) { iM= pPI->subIter; }
       //printf("iter=%zu,%zu\n", pPI->subIter, pPI->maxIter);
 
-      bindCtx( &gCtx );
       do
       {
-         int k= gCtx.i & 0x1;
-         pFrame= gCtx.hbt.hfb+k;
+         do
+         {
+            int k= gCtx.i & 0x1;
+            pFrame= gCtx.hbt.hfb+k;
 
-         iR= pPI->maxIter - gCtx.i;
-         if (iM > iR) { iM= iR; }
+            iR= pPI->maxIter - gCtx.i;
+            if (iM > iR) { iM= iR; }
 
-         deltaT();
-         gCtx.i+= proc2I1A(gCtx.hbt.hfb[(k^0x1)].pAB, pFrame->pAB, &(gCtx.org), &(gCtx.pv), iM>>1);
-         tE0= deltaT();
-         tE1+= tE0;
-         
-         k= gCtx.i & 0x1;
-         pFrame= gCtx.hbt.hfb+k;
-         pFrame->iter= gCtx.i;
+            deltaT();
+            gCtx.i+= proc2I1A(gCtx.hbt.hfb[(k^0x1)].pAB, pFrame->pAB, &(gCtx.org), &(gCtx.pv), iM>>1);
+            tE0= deltaT();
+            tE1+= tE0;
+            
+            k= gCtx.i & 0x1;
+            pFrame= gCtx.hbt.hfb+k;
+            pFrame->iter= gCtx.i;
 
-         summarise(pFrame, &(gCtx.org));
-         printf("\ttE= %G, %G\n", tE0, tE1);
+            summarise(pFrame, &(gCtx.org));
+            printf("\ttE= %G, %G\n", tE0, tE1);
 
-         saveFrame(pFrame->pAB, gCtx.org.def, gCtx.i);
-      } while (gCtx.i < pPI->maxIter);
+            saveFrame(pFrame->pAB, gCtx.org.def, gCtx.i);
+         } while (gCtx.i < pPI->maxIter);
+         printf("procNextAcc() ... \n");
+      } while (procNextAcc(FALSE));
       releaseCtx(&gCtx);
    }
 

@@ -15,6 +15,23 @@
 #define INLINE
 #endif
 
+#define ACC_DEV_MAX 4
+
+typedef struct
+{
+   U8 c, n;
+} AccDev;
+
+typedef struct
+{
+   AccDev d[ACC_DEV_MAX];
+   U8 nDev, iCurr;
+   U8 pad[2];
+} AccDevTable;
+
+
+static AccDevTable gDev={0,};
+
 
 /***/
 /*
@@ -99,6 +116,7 @@ Bool32 procInitAcc (size_t f) // arg param ?
    int id;
 
    printf("procInitAcc() - nNV=%d, nH=%d (other=%d)\n", nNV, nH, nNH - nNV);
+   gDev.nDev= 0;
    if (nNV > 0)
    {
       id= acc_get_device_num(acc_device_nvidia);
@@ -108,8 +126,14 @@ Bool32 procInitAcc (size_t f) // arg param ?
          id= nNV;
          while (--id >= 0)
          {
-            acc_set_device_num( id, acc_device_nvidia );
-            acc_init( acc_device_nvidia ); // get_err?
+            if (gDev.nDev < ACC_DEV_MAX)
+            {
+               gDev.d[gDev.nDev].c= acc_device_nvidia;
+               gDev.d[gDev.nDev].n= id;
+               ++gDev.nDev;
+            }
+            //acc_set_device_num( id, acc_device_nvidia );
+            //acc_init( acc_device_nvidia ); // get_err?
             ++nInit;
          }
       }
@@ -123,15 +147,44 @@ Bool32 procInitAcc (size_t f) // arg param ?
          id= nNH;
          while (--id >= 0)
          {
-            acc_set_device_num( id, acc_device_host );
-            acc_init( acc_device_host );
+            if (gDev.nDev < ACC_DEV_MAX)
+            {
+               gDev.d[gDev.nDev].c= acc_device_host;
+               gDev.d[gDev.nDev].n= id;
+               ++gDev.nDev;
+            }
+            //acc_set_device_num( id, acc_device_host );
+            //acc_init( acc_device_host );
             ++nInit;
          }
       }
    }
-#endif
+   if (gDev.nDev > 0)
+   {
+      gDev.iCurr= 0;
+      acc_set_device_num( gDev.d[0].n, gDev.d[0].c );
+   }
+#endif // OPEN_ACC
    return(nInit > 0);
 } // procInitAcc
+
+Bool32 procNextAcc (Bool32 wrap)
+{
+#ifdef OPEN_ACC
+   if (gDev.nDev > 0)
+   {
+      U8 iN= gDev.iCurr + 1;
+      if (wrap) { iN= iN % gDev.nDev; }
+      if (iN < gDev.nDev)
+      {
+         acc_set_device_num( gDev.d[iN].n, gDev.d[iN].c );
+         gDev.iCurr= iN;
+         return(TRUE);
+      }
+   }
+#endif // OPEN_ACC
+   return(FALSE);
+} // procNextAcc
 
 /* Parameter variation
 void procVA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP)
