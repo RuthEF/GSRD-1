@@ -168,20 +168,22 @@ int main ( int argc, char* argv[] )
    const ProcInfo *pPI= &(ai.proc);
    if (procInitAcc(pPI->flags) && initCtx(&gCtx, pDFI->v[0], pDFI->v[1], 4))
    {
-      size_t i= 0, iM= pPI->maxIter, iR;
-      SMVal tE0=0, tE1=0;
-      //BlockStat bs={0};
-      HostFB *pFrame= gCtx.hbt.hfb+0;
-      if (0 == loadBuff(pFrame->pAB, pDFI->path, pDFI->bytes))  //printf("nB=%zu\n",
-      {
-         initHFB(pFrame, gCtx.org.def, 32);
-         saveFrame(pFrame->pAB, gCtx.org.def, gCtx.i);
-      }
-      if (pPI->subIter > 0) { iM= pPI->subIter; }
-      //printf("iter=%zu,%zu\n", pPI->subIter, pPI->maxIter);
+      size_t iM, iR;
+      SMVal tE0, tE1;
+      HostFB *pFrame;
 
       do
       {
+         tE0= tE1= 0;
+         iM= pPI->maxIter;
+         if (pPI->subIter > 0) { iM= pPI->subIter; }
+         pFrame= gCtx.hbt.hfb+0;
+         if (0 == loadBuff(pFrame->pAB, pDFI->path, pDFI->bytes))  //printf("nB=%zu\n",
+         {
+            initHFB(pFrame, gCtx.org.def, 32);
+            saveFrame(pFrame->pAB, gCtx.org.def, gCtx.i);
+         }
+
          do
          {
             int k= gCtx.i & 0x1;
@@ -204,7 +206,7 @@ int main ( int argc, char* argv[] )
 
             saveFrame(pFrame->pAB, gCtx.org.def, gCtx.i);
          } while (gCtx.i < pPI->maxIter);
-         printf("procNextAcc() ... \n");
+         printf("----------\nprocNextAcc() ... \n");
       } while (procNextAcc(FALSE));
       releaseCtx(&gCtx);
    }
