@@ -175,8 +175,8 @@ const char *procGetCurrAccTxt (char t[], int m)
 #ifdef OPEN_ACC
    switch (pA->c)
    {
-	  case acc_device_nvidia : s= "NV";
-	  case acc_device_host : s= "H";
+	  case acc_device_nvidia : s= "NV"; break;
+	  case acc_device_host : s= "H"; break;
 	  //default s= "?";
    }
 #endif // OPEN_ACC
