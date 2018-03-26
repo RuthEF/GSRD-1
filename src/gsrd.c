@@ -81,7 +81,7 @@ void frameStat (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * c
    const Scalar * const pA= pAB;
    const Scalar * const pB= pAB + pO->stride[3];
    BlockStat s;
-   size_t i, zI[50], nZ= 0;
+   size_t i;
 
    initNFS(s.a+0, 2, pA, 1); // KLUDGY
    initNFS(s.b+0, 2, pB, 1);
@@ -92,18 +92,8 @@ void frameStat (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * c
       const Scalar a= pA[j];
       const Scalar b= pB[j];
 
-      if ((0 == a) || (0 == b)) { if (nZ < 50) { zI[nZ]= i; } nZ++; }
-
       statAdd(s.a + (a <= 0), a);
       statAdd(s.b + (b <= 0), b);
-   }
-   if (nZ > 0)
-   {
-      size_t mZ= MIN(50, nZ);
-      printf("%zu zeros: %zu", nZ, zI[0]);
-      i= 1;
-      while (i < mZ) { printf(", %zu", zI[i++]); }
-      printf("\n");
    }
    if (pS) { *pS= s; }
 } // frameStat
@@ -112,8 +102,8 @@ void summarise (HostFB * const pF, const ImgOrg * const pO)
 {  //procF
    frameStat(&(pF->s), pF->pAB, pO);
    printf("summarise() - \n\t%zu\tN\tmin\tmax\tsum\tmean\tvar\n", pF->iter);
-   printNFS("\tA:", pF->s.a, 2, " | <=0 ", "\n");
-   printNFS("\tB:", pF->s.b, 2, " | <=0 ", "\n");
+   printNFS("\tA: ", pF->s.a, 2, " | <=0 ", "\n");
+   printNFS("\tB: ", pF->s.b, 2, " | <=0 ", "\n");
 } // summarise
 
 void compare (HostFB * const pF1, HostFB * const pF2, const ImgOrg * const pO)

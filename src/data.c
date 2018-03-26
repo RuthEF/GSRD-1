@@ -197,9 +197,9 @@ void printNFS (const char *pHdr, const FieldStat fs[], const U32 nFS, const char
    for (U32 i= 0; i < nFS; ++i )
    {
       StatRes1 r;
-      printf("\t%4G  %4G  %4G", fs[i].min, fs[i].max, fs[i].s.m[0]);
+      printf("%G %G %G", fs[i].s.m[0], fs[i].min, fs[i].max);
       //if (sizeof(SMVal) > sizeof(double)) { fsFmtStr= "%LG, %LG"; }
-      if (statGetRes1(&r, &(fs[i].s), 0)) { printf("  %4G  %4G  %4G", fs[i].s.m[1], r.m, r.v); }
+      if (statGetRes1(&r, &(fs[i].s), 0)) { printf(" %G %G %G", fs[i].s.m[1], r.m, r.v); }
       if (pFS && pFS[0] && (--nS > 0)) { printf("%s", pFS); }
    }
    if (pFtr && pFtr[0]) { printf("%s", pFtr); }
