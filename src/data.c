@@ -150,37 +150,57 @@ size_t initHFB (HostFB * const pB, const V2U32 d, const U16 step)
    return(nB);
 } // initHFB
 
+#ifndef M_INF
+#define M_INF  1E308
+#endif
 
-void initFS (FieldStat * const pFS, const Scalar * const pS)
+void initNFS (FieldStat fs[], const U32 nFS, const Scalar * const pS, const U32 mS)
 {
-   if (pFS)
+   U32 i= 0;
+   if (pS)
    {
-      Scalar s= 0; // or NaN ?
-      if (pS) { s= *pS; }
-      pFS->min= pFS->max= s;
-
-      pFS->s.m[0]= (NULL != pS);
-      pFS->s.m[1]= s;
-      pFS->s.m[1]= s * s;
-      //pFS->sum1= s;
-      //pFS->sum2= s * s;
-   }
-} // initFS
-
-void printFS (const char *pHdr, const FieldStat * const pFS, const char *pFtr)
-{
-   if (pHdr && pHdr[0]) { printf("%s", pHdr); }
-   if (pFS)
-   {
-      StatRes1 r;
-
-      printf("%G\t%G", pFS->min, pFS->max);
-
-      //if (sizeof(SMVal) > sizeof(double)) { fsFmtStr= "%LG, %LG"; }
-      if ( statGetRes1(&r, &(pFS->s), 0) )
+      while (i < mS)
       {
-         printf("\t%G\t%G\t%G", pFS->s.m[1], r.m, r.v); //sqrtf(r.v));
+         Scalar s= pS[i];
+         fs[i].min= fs[i].max= s;
+         fs[i].s.m[0]= 1;
+         fs[i].s.m[1]= s;
+         fs[i].s.m[2]= s * s;
+         ++i;
       }
    }
+   while (i < nFS)
+   {
+      fs[i].min= M_INF;
+      fs[i].max= -M_INF;
+
+      fs[i].s.m[0]= 0;
+      fs[i].s.m[1]= 0;
+      fs[i].s.m[2]= 0;
+      ++i;
+   }
+} // initNFS
+
+void statAdd (FieldStat * const pFS, Scalar s)
+{
+   if (s < pFS->min) { pFS->min= s; }
+   if (s > pFS->max) { pFS->max= s; }
+   pFS->s.m[0]+= 1;
+   pFS->s.m[1]+= s;
+   pFS->s.m[2]+= s * s;
+} // statAdd
+
+void printNFS (const char *pHdr, const FieldStat fs[], const U32 nFS, const char *pFS, const char *pFtr)
+{
+   int nS= nFS;
+   if (pHdr && pHdr[0]) { printf("%s", pHdr); }
+   for (U32 i= 0; i < nFS; ++i )
+   {
+      StatRes1 r;
+      printf("\t%4G  %4G  %4G", fs[i].min, fs[i].max, fs[i].s.m[0]);
+      //if (sizeof(SMVal) > sizeof(double)) { fsFmtStr= "%LG, %LG"; }
+      if (statGetRes1(&r, &(fs[i].s), 0)) { printf("  %4G  %4G  %4G", fs[i].s.m[1], r.m, r.v); }
+      if (pFS && pFS[0] && (--nS > 0)) { printf("%s", pFS); }
+   }
    if (pFtr && pFtr[0]) { printf("%s", pFtr); }
-} // printFS
+} // printNFS

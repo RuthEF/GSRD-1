@@ -61,7 +61,7 @@ typedef struct
 
 typedef struct
 {
-   FieldStat a, b;
+   FieldStat a[2], b[2];
 } BlockStat;
 
 typedef struct
@@ -91,7 +91,8 @@ extern void releaseHBT (HostBuffTab * const pT);
 
 extern size_t initHFB (HostFB * const pB, const V2U32 d, const U16 step);
 
-extern void initFS (FieldStat * const pFS, const Scalar * const pS);
-extern void printFS (const char *pHdr, const FieldStat * const pFS, const char *pFtr);
+extern void initNFS (FieldStat fs[], const U32 nFS, const Scalar * const pS, const U32 mS);
+extern void statAdd (FieldStat * const pFS, Scalar s);
+extern void printNFS (const char *pHdr, const FieldStat fs[], const U32 nFS, const char *pFS, const char *pFtr);
 
 #endif // DATA_H

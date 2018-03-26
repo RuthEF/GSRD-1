@@ -177,7 +177,7 @@ const char *procGetCurrAccTxt (char t[], int m)
    {
       case acc_device_nvidia : s= "NV"; break;
       case acc_device_host :   s= "H"; break;
-      default s= "?"; break;
+      default : s= "?"; break;
    }
 #endif // OPEN_ACC
    snprintf(t, m, "%s%u", s, pA->n);
@@ -404,34 +404,3 @@ U32 proc2I1A (Scalar * restrict pR, Scalar * restrict pS, const ImgOrg * pO, con
    }
    return(2*nI+1);
 } // proc2I1A
-
-void procFrameStat (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * const pO)
-{
-   const size_t n= pO->def.x * pO->def.y;
-   BlockStat s;
-   
-   initFS(&(s.a), pAB);
-   initFS(&(s.b), pAB + pO->stride[3]);
-   #pragma acc data copy(s) present( pAB[0:pO->n] ) present(pO)
-   {
-      #pragma acc parallel loop
-      for (size_t i=1; i<n; i++)
-      {
-         const Index j= i * pO->stride[0];
-         const Index k= j + pO->stride[3];
-         const Scalar a= pAB[j];
-         if (a < s.a.min) { s.a.min= a; }
-         if (a > s.a.max) { s.a.max= a; }
-         s.a.s.m[1]+= a;
-         s.a.s.m[2]+= a * a;
-         const Scalar b= pAB[k];
-         if (b < s.b.min) { s.b.min= b; }
-         if (b > s.b.max) { s.b.max= b; }
-         s.b.s.m[1]+= b;
-         s.b.s.m[2]+= b * b;
-      }
-      s.a.s.m[0]= s.b.s.m[0]= n;
-   }
-   if (pS) { *pS= s; }
-} // procFrameStat
-

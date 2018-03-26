@@ -50,14 +50,19 @@ void releaseCtx (Context * const pC)
    }
 } // releaseCtx
 
-size_t saveFrame (const HostFB * const pFB, const ImgOrg * const pO)
+size_t saveFrame 
+(
+   const HostFB * const pFB, 
+   const ImgOrg * const pO, 
+   const ArgInfo * const pA
+)
 {
    size_t r= 0;
    char name[64];
    //int t= 3;
    if (pFB && pFB->pAB && pO)
    {
-      snprintf(name, sizeof(name)-1, "raw/gsrd%05lu(%lu,%lu,2)F64.raw", pFB->iter, pO->def.x, pO->def.y);
+      snprintf(name, sizeof(name)-1, "%s/gsrd%05lu(%lu,%lu,2)F64.raw", pA->dfi.outPath, pFB->iter, pO->def.x, pO->def.y);
       do
       {
          r= saveBuff(pFB->pAB, name, sizeof(Scalar) * pO->n);
@@ -72,29 +77,25 @@ size_t saveFrame (const HostFB * const pFB, const ImgOrg * const pO)
 
 void frameStat (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * const pO)
 {
-   const size_t n= pO->def.x * pO->def.y;
+   const size_t n= pO->def.x * pO->def.y; // pO->n / 2
    const Scalar * const pA= pAB;
    const Scalar * const pB= pAB + pO->stride[3];
    BlockStat s;
    size_t i, zI[50], nZ= 0;
 
-   initFS(&(s.a), pA);
-   initFS(&(s.b), pB);
+   initNFS(s.a+0, 2, pA, 1); // KLUDGY
+   initNFS(s.b+0, 2, pB, 1);
    
-   for (i=1; i<n; i++)
+   for (i=1; i < n; i++)
    {
       const Index j= i * pO->stride[0];
       const Scalar a= pA[j];
       const Scalar b= pB[j];
+
       if ((0 == a) || (0 == b)) { if (nZ < 50) { zI[nZ]= i; } nZ++; }
-      if (a < s.a.min) { s.a.min= a; }
-      if (a > s.a.max) { s.a.max= a; }
-      s.a.s.m[1]+= a;
-      s.a.s.m[2]+= a * a;
-      if (b < s.b.min) { s.b.min= b; }
-      if (b > s.b.max) { s.b.max= b; }
-      s.b.s.m[1]+= b;
-      s.b.s.m[2]+= b * b;
+
+      statAdd(s.a + (a <= 0), a);
+      statAdd(s.b + (b <= 0), b);
    }
    if (nZ > 0)
    {
@@ -104,17 +105,21 @@ void frameStat (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * c
       while (i < mZ) { printf(", %zu", zI[i++]); }
       printf("\n");
    }
-   s.a.s.m[0]= s.b.s.m[0]= n;
    if (pS) { *pS= s; }
 } // frameStat
 
 void summarise (HostFB * const pF, const ImgOrg * const pO)
 {  //procF
    frameStat(&(pF->s), pF->pAB, pO);
-   printf("summarise() - \n\t%zu\tmin\t\tmax\t\tsum\t\tmean\t\tvar\n", pF->iter);
-   printFS("\tA:\t", &(pF->s.a), "\n");
-   printFS("\tB:\t", &(pF->s.b), "\n");
+   printf("summarise() - \n\t%zu\tN\tmin\tmax\tsum\tmean\tvar\n", pF->iter);
+   printNFS("\tA:", pF->s.a, 2, " | <=0 ", "\n");
+   printNFS("\tB:", pF->s.b, 2, " | <=0 ", "\n");
 } // summarise
+
+void compare (HostFB * const pF1, HostFB * const pF2, const ImgOrg * const pO)
+{
+   printf("compare() - iter: %zu\t\t%zu\n", pF1->iter, pF2->iter);
+} // compare
 
 int main ( int argc, char* argv[] )
 {
@@ -146,8 +151,9 @@ int main ( int argc, char* argv[] )
       size_t iM, iR;
       SMVal tE0, tE1;
       HostFB *pFrame;
-      char t[8], afb=0;
-	  
+      char t[8];
+      U8 afb=0, nIdx=0, fIdx[4], k;
+
       do
       {
          tE0= tE1= 0;
@@ -156,15 +162,17 @@ int main ( int argc, char* argv[] )
          gCtx.i= 0;
          afb&= 0x3;
          pFrame= gCtx.hbt.hfb + afb;
-         if (0 == loadBuff(pFrame->pAB, pDFI->path, pDFI->bytes))  //printf("nB=%zu\n",
+         if (0 == loadBuff(pFrame->pAB, pDFI->inPath, pDFI->bytes))  //printf("nB=%zu\n",
          {
             initHFB(pFrame, gCtx.org.def, 32);
-            saveFrame(pFrame, &(gCtx.org));
+            saveFrame(pFrame, &(gCtx.org), &ai);
          }
+         pFrame->iter= gCtx.i;
+         summarise(pFrame, &(gCtx.org));
          printf("---- %s ----\n", procGetCurrAccTxt(t, sizeof(t)-1));
          do
          {
-            int k= gCtx.i & 0x1;
+            k= gCtx.i & 0x1;
             iR= pPI->maxIter - gCtx.i;
             if (iM > iR) { iM= iR; }
 
@@ -179,10 +187,18 @@ int main ( int argc, char* argv[] )
             summarise(pFrame+k, &(gCtx.org));
             printf("\ttE= %G, %G\n", tE0, tE1);
 
-            saveFrame(pFrame+k, &(gCtx.org));
+            saveFrame(pFrame+k, &(gCtx.org), &ai);
          } while (gCtx.i < pPI->maxIter);
+         if (nIdx < 4) { fIdx[nIdx++]= afb+k; }
          afb+= 2;
       } while (procSetNextAcc(FALSE));
+      if (nIdx > 1)
+      {
+         HostFB *pF2= gCtx.hbt.hfb+fIdx[1];
+         pFrame=  gCtx.hbt.hfb+fIdx[0];
+         //if (pFrame->iter == pF1->iter) 
+         { compare(pFrame, pF2, &(gCtx.org)); }
+      }
    }
    releaseCtx(&gCtx);
  

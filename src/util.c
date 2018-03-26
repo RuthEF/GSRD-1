@@ -80,17 +80,23 @@ SMVal deltaT (void)
    return(dt);
 } // deltaT
 
-Bool32 statGetRes1 (StatRes1 * const pR, const StatMom * const pS, const SMVal dof)
+U32 statGetRes1 (StatRes1 * const pR, const StatMom * const pS, const SMVal dof)
 {
-   StatRes1 r={0,};
-   if (pS && (pS->m[0] > 0) && (dof >= 0))
+   StatRes1 r={ 0, 0 };
+   U32 o= 0;
+   if (pS && (pS->m[0] > 0))
    {
       r.m= pS->m[1] / pS->m[0];
-      r.v= ( pS->m[2] - ((pS->m[1] * pS->m[1]) / pS->m[0]) ) / (pS->m[0] - dof);
-      if (pR) { *pR= r; }
-      return(TRUE);
+      ++o;
+      if (pS->m[0] != dof)
+      { 
+         SMVal ess= (pS->m[1] * pS->m[1]) / pS->m[0];
+         r.v= ( pS->m[2] - ess ) / (pS->m[0] - dof);
+         ++o;
+      }
    }
-   return(FALSE);
+   if (pR) { *pR= r; }
+   return(o);
 } // statGetRes1
 
 
@@ -154,7 +160,7 @@ size_t scanDFI (DataFileInfo * pDFI, const char * const path)
    size_t bytes= fileSize(path);
    if (bytes > 0)
    {
-      pDFI->path=  path;
+      pDFI->inPath=  path;
       pDFI->name=  stripPath(path);
       pDFI->bytes= bytes;
       pDFI->nV=    scanVI(pDFI->v, 4, &(pDFI->vSS), pDFI->name);
@@ -198,6 +204,9 @@ int scanArgs (ArgInfo *pAI, const char * const a[], int nA)
          n+= contigCharSetN(pCh+n, 2, ":=", 2);
          switch(toupper(c))
          {
+            case 'O' : pAI->dfi.outPath= pCh+n;
+               break;
+
             case 'A' :
                v= toupper( pCh[n] );
                if ('H' == v) { pAI->proc.flags|= PROC_FLAG_ACCHOST; }
@@ -218,6 +227,7 @@ int scanArgs (ArgInfo *pAI, const char * const a[], int nA)
          }
       }
    }
+   if (NULL == pAI->dfi.outPath) { pAI->dfi.outPath= pAI->dfi.inPath; }
    //if (0 == pAI->proc.flags) { pAI->proc.flags= PROC_FLAG_HOST|PROC_FLAG_GPU; }
    if (0 == pAI->proc.maxIter) { pAI->proc.maxIter= 5000; }
    if (0 == pAI->proc.subIter) { pAI->proc.subIter= 1000; }

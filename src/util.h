@@ -69,7 +69,7 @@ typedef struct { U16 start, len; } ScanSeg;
 
 typedef struct
 {
-   const char  *path, *name;
+   const char  *inPath, *outPath, *name;
    size_t      bytes;
    ScanSeg     vSS;
    int         v[4], nV;
@@ -83,8 +83,8 @@ typedef struct
 
 typedef struct
 {
-   DataFileInfo   dfi;
-   ProcInfo       proc;
+   DataFileInfo  dfi;
+   ProcInfo      proc;
 } ArgInfo;
 
 /***/
@@ -94,7 +94,7 @@ extern size_t loadBuff (void * const pB, const char * const path, const size_t b
 extern size_t saveBuff (const void * const pB, const char * const path, const size_t bytes);
 
 extern SMVal deltaT (void);
-extern Bool32 statGetRes1 (StatRes1 * const pR, const StatMom * const pS, const SMVal dof);
+extern U32 statGetRes1 (StatRes1 * const pR, const StatMom * const pS, const SMVal dof);
 
 // extern const char *sc (const char *s, const char c, const char * const e, const I8 o);
 //extern int scanVI (int v[], const int vMax, ScanSeg * const pSS, const char s[]);
