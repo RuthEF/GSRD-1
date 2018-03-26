@@ -168,7 +168,23 @@ Bool32 procInitAcc (size_t f) // arg param ?
    return(nInit > 0);
 } // procInitAcc
 
-Bool32 procNextAcc (Bool32 wrap)
+const char *procGetCurrAccTxt (char t[], int m)
+{
+   const AccDev * const pA= gDev.d + gDev.iCurr;
+   const char *s="C";
+#ifdef OPEN_ACC
+   switch (pA->c)
+   {
+	  case acc_device_nvidia : s= "NV";
+	  case acc_device_host : s= "H";
+	  //default s= "?";
+   }
+#endif // OPEN_ACC
+   snprintf(t, m, "%s%u", s, pA->n);
+   return(t);
+} // procGetCurrAccTxt
+
+Bool32 procSetNextAcc (Bool32 wrap)
 {
 #ifdef OPEN_ACC
    if (gDev.nDev > 0)
@@ -184,7 +200,7 @@ Bool32 procNextAcc (Bool32 wrap)
    }
 #endif // OPEN_ACC
    return(FALSE);
-} // procNextAcc
+} // procSetNextAcc
 
 /* Parameter variation
 void procVA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP)

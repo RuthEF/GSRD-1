@@ -3,7 +3,6 @@
 
 typedef struct
 {
-   //MemBuff  buff; DEPRECATED
    ParamVal    pv;
    HostBuffTab hbt;
    ImgOrg      org;
@@ -18,28 +17,6 @@ static Context gCtx={0};
 
 /***/
 
-Bool32 initHBT (HostBuffTab * const pT, const size_t fb, const U16 nF)
-{
-   int i= 0;
-
-   memset(pT, -1, sizeof(*pT));
-   if (nF >= 5) { pT->pC= malloc(fb / 2); } else { pT->pC= NULL; }
-   do
-   {
-      pT->hfb[i].pAB= malloc(fb);
-   } while (pT->hfb[i].pAB && (++i < HFB_MAX));
-   return(i == HFB_MAX);
-} // initHBT
-
-void releaseHBT (HostBuffTab * const pT)
-{
-   for ( int i= 0; i< HFB_MAX; ++i )
-   { 
-      if (pT->hfb[i].pAB) { free(pT->hfb[i].pAB); pT->hfb[i].pAB= NULL; }
-   }
-   if (pT->pC) { free(pT->pC); pT->pC= NULL; }
-} // releaseHBT
-
 Context *initCtx (Context * const pC, U16 w, U16 h, U16 nF)
 {
    if (0 == w) { w= 256; }
@@ -47,11 +24,10 @@ Context *initCtx (Context * const pC, U16 w, U16 h, U16 nF)
    if (0 == nF) { nF= 4; }
    const size_t n= w * h;
    const size_t b2F= 2 * n * sizeof(Scalar);
-   //pC->buff.p= NULL; pC->buff.bytes= 0;
+
    if (b2F > n)
    {
       initParam(&(pC->pv), gKL, &(pC->org.def), 0.100, 0.005);
-      //printf("initCtx() - %zu bytes @ %p\n", b, p);
 
       initOrg(&(pC->org), w, h, 0);
       
@@ -74,22 +50,21 @@ void releaseCtx (Context * const pC)
    }
 } // releaseCtx
 
-size_t saveFrame (const Scalar * const pB, const V2U32 def, const U32 iNum)
+size_t saveFrame (const HostFB * const pFB, const ImgOrg * const pO)
 {
-   char name[64];
-   const size_t n= def.x * def.y * 2;
    size_t r= 0;
-   int t= 3;
-   if (n > 0)
+   char name[64];
+   //int t= 3;
+   if (pFB && pFB->pAB && pO)
    {
-      snprintf(name, sizeof(name)-1, "raw/gsrd%05lu(%lu,%lu,2)F64.raw", iNum, def.x, def.y);
+      snprintf(name, sizeof(name)-1, "raw/gsrd%05lu(%lu,%lu,2)F64.raw", pFB->iter, pO->def.x, pO->def.y);
       do
       {
-         r= saveBuff(pB, name, sizeof(Scalar) * n);
+         r= saveBuff(pFB->pAB, name, sizeof(Scalar) * pO->n);
       } while (0); // ((r <= 0) && (t-- > 0) && sleep(1));
       //if (r > 0)
       {
-         printf("saveFrame() - %s %p %zu bytes\n", name, pB, r);
+         printf("saveFrame() - %s %p %zu bytes\n", name, pFB->pAB, r);
       }
    }
    return(r);
@@ -171,7 +146,8 @@ int main ( int argc, char* argv[] )
       size_t iM, iR;
       SMVal tE0, tE1;
       HostFB *pFrame;
-
+	  char t[8];
+	  
       do
       {
          tE0= tE1= 0;
@@ -182,9 +158,9 @@ int main ( int argc, char* argv[] )
          if (0 == loadBuff(pFrame->pAB, pDFI->path, pDFI->bytes))  //printf("nB=%zu\n",
          {
             initHFB(pFrame, gCtx.org.def, 32);
-            saveFrame(pFrame->pAB, gCtx.org.def, gCtx.i);
+            saveFrame(pFrame, &(gCtx.org));
          }
-
+         printf("---- %s ----\n", procGetCurrAccTxt(t, sizeof(t)-1));
          do
          {
             int k= gCtx.i & 0x1;
@@ -205,10 +181,9 @@ int main ( int argc, char* argv[] )
             summarise(pFrame, &(gCtx.org));
             printf("\ttE= %G, %G\n", tE0, tE1);
 
-            saveFrame(pFrame->pAB, gCtx.org.def, gCtx.i);
+            saveFrame(pFrame, &(gCtx.org));
          } while (gCtx.i < pPI->maxIter);
-         printf("----------\nprocNextAcc() ... \n");
-      } while (procNextAcc(FALSE));
+      } while (procSetNextAcc(FALSE));
       releaseCtx(&gCtx);
    }
 

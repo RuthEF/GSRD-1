@@ -10,7 +10,7 @@
 #define KLA0 (Scalar)0.25
 #define KLB0 (Scalar)0.025
 
-#define HFB_MAX   (2)
+#define HFB_MAX   (4)
 
 //typedef float      Scalar;
 typedef double       Scalar;
@@ -55,17 +55,6 @@ typedef struct
 
 typedef struct
 {
-   Stride x,y;
-} SV2;
-
-typedef struct
-{
-   Scalar *pAB;
-   size_t iter;
-} Frame;
-
-typedef struct
-{
    Scalar min, max;
    StatMom s;
 } FieldStat;
@@ -85,7 +74,7 @@ typedef struct
 typedef struct
 {
    HostFB   hfb[HFB_MAX];
-   Scalar   *pC; // *pAB[2], ;
+   Scalar   *pC; // conservation tally field
 } HostBuffTab;
 
 
@@ -95,6 +84,10 @@ typedef struct
 extern void initOrg (ImgOrg * const pO, U16 w, U16 h, U8 flags);
 extern size_t initParam (ParamVal * const pP, const Scalar kl[3], const V2U32 * const pD, Scalar varR, Scalar varD); // ParamArgs *
 extern void releaseParam (ParamVal * const pP);
+extern Bool32 initHBT (HostBuffTab * const pT, const size_t fb, const U32 mF);
+extern void releaseHBT (HostBuffTab * const pT);
+
+
 
 extern size_t initHFB (HostFB * const pB, const V2U32 d, const U16 step);
 

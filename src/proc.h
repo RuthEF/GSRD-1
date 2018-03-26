@@ -8,7 +8,8 @@
 /***/
 
 extern Bool32 procInitAcc (size_t f);
-extern Bool32 procNextAcc (Bool32 wrap);
+extern const char *procGetCurrAccTxt (char t[], int m);
+extern Bool32 procSetNextAcc (Bool32 wrap);
 
 //extern void procBindData (const HostBuff * const pHB, const ParamVal * const pP, const ImgOrg * const pO, const U32 iS);
 extern void procFrameStat (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * const pO);

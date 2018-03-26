@@ -94,6 +94,42 @@ void releaseParam (ParamVal * const pP)
    if (pP && pP->var.pK) { free(pP->var.pK); pP->var.pK= NULL; }
 } // releaseParam
 
+Bool32 initHBT (HostBuffTab * const pT, const size_t fb, const U32 mF)
+{
+   U32 nF= 0, i= 0;
+   Bool32 a;
+   
+   memset(pT, 0, sizeof(*pT));
+   if (mF >= 5)
+   { 
+	   pT->pC= malloc(fb / 2);
+	   nF+= (NULL != pT->pC);
+   }
+   do
+   {
+      pT->hfb[i].pAB= malloc(fb);
+      a= (NULL != pT->hfb[i].pAB);
+      if (a)
+      {
+		 BlockStat *pS= &(pT->hfb[i].s);
+		 memset(pS, -1, sizeof(*pS));
+		 pT->hfb[i].iter= -1;
+         nF+= 2;
+      }
+   } while (a && (nF < mF) && (++i < HFB_MAX));
+   return(mF == nF);
+} // initHBT
+
+void releaseHBT (HostBuffTab * const pT)
+{
+   for ( int i= 0; i< HFB_MAX; ++i )
+   { 
+      if (pT->hfb[i].pAB) { free(pT->hfb[i].pAB); pT->hfb[i].pAB= NULL; }
+   }
+   if (pT->pC) { free(pT->pC); pT->pC= NULL; }
+} // releaseHBT
+
+
 size_t initHFB (HostFB * const pB, const V2U32 d, const U16 step)
 {
    const size_t n= d.x * d.y;
@@ -148,5 +184,3 @@ void printFS (const char *pHdr, const FieldStat * const pFS, const char *pFtr)
    }
    if (pFtr && pFtr[0]) { printf("%s", pFtr); }
 } // printFS
-
-
