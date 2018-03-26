@@ -141,12 +141,12 @@ int main ( int argc, char* argv[] )
 
    const DataFileInfo *pDFI= &(ai.dfi);
    const ProcInfo *pPI= &(ai.proc);
-   if (procInitAcc(pPI->flags) && initCtx(&gCtx, pDFI->v[0], pDFI->v[1], 4))
+   if (procInitAcc(pPI->flags) && initCtx(&gCtx, pDFI->v[0], pDFI->v[1], 8))
    {
       size_t iM, iR;
       SMVal tE0, tE1;
       HostFB *pFrame;
-	  char t[8];
+      char t[8], afb=0;
 	  
       do
       {
@@ -154,7 +154,8 @@ int main ( int argc, char* argv[] )
          iM= pPI->maxIter;
          if (pPI->subIter > 0) { iM= pPI->subIter; }
          gCtx.i= 0;
-         pFrame= gCtx.hbt.hfb+0;
+         afb&= 0x3;
+         pFrame= gCtx.hbt.hfb + afb;
          if (0 == loadBuff(pFrame->pAB, pDFI->path, pDFI->bytes))  //printf("nB=%zu\n",
          {
             initHFB(pFrame, gCtx.org.def, 32);
@@ -164,29 +165,27 @@ int main ( int argc, char* argv[] )
          do
          {
             int k= gCtx.i & 0x1;
-            pFrame= gCtx.hbt.hfb+k;
-
             iR= pPI->maxIter - gCtx.i;
             if (iM > iR) { iM= iR; }
 
             deltaT();
-            gCtx.i+= proc2I1A(gCtx.hbt.hfb[(k^0x1)].pAB, pFrame->pAB, &(gCtx.org), &(gCtx.pv), iM>>1);
+            gCtx.i+= proc2I1A(pFrame[(k^0x1)].pAB, pFrame[k].pAB, &(gCtx.org), &(gCtx.pv), iM>>1);
             tE0= deltaT();
             tE1+= tE0;
             
             k= gCtx.i & 0x1;
-            pFrame= gCtx.hbt.hfb+k;
-            pFrame->iter= gCtx.i;
+            pFrame[k].iter= gCtx.i;
 
-            summarise(pFrame, &(gCtx.org));
+            summarise(pFrame+k, &(gCtx.org));
             printf("\ttE= %G, %G\n", tE0, tE1);
 
-            saveFrame(pFrame, &(gCtx.org));
+            saveFrame(pFrame+k, &(gCtx.org));
          } while (gCtx.i < pPI->maxIter);
+         afb+= 2;
       } while (procSetNextAcc(FALSE));
-      releaseCtx(&gCtx);
    }
-
+   releaseCtx(&gCtx);
+ 
    if ( nErr != 0 ) { printf( "Test FAILED\n"); }
    else {printf( "Test PASSED\n"); }
 
