@@ -34,6 +34,10 @@ const char *stripPath (const char *path)
    return(NULL);
 } // stripPath
 
+const char *extractPath (char s[], int m, const char *pfe)
+{
+} // extractPath
+
 size_t fileSize (const char * const path)
 {
    if (path && path[0])
@@ -160,8 +164,21 @@ size_t scanDFI (DataFileInfo * pDFI, const char * const path)
    size_t bytes= fileSize(path);
    if (bytes > 0)
    {
-      pDFI->inPath=  path;
+      int nCh;
+
+      pDFI->initFile=   path;
+      pDFI->remBuff= sizeof(pDFI->buff)-1;
       pDFI->name=  stripPath(path);
+      nCh= pDFI->name - path;
+      if ((nCh > 0) && (nCh < pDFI->remBuff))
+      {
+         pDFI->inPath= pDFI->buff;
+         memcpy(pDFI->buff, path, nCh);
+         pDFI->buff[nCh++]= 0;
+         pDFI->remBuff-= nCh;
+         printf("scanDFI() - inPath=%s\n", pDFI->inPath);
+      } else { pDFI->inPath= NULL; } // "./"; }
+
       pDFI->bytes= bytes;
       pDFI->nV=    scanVI(pDFI->v, 4, &(pDFI->vSS), pDFI->name);
       const char *p= pDFI->name + pDFI->vSS.start + pDFI->vSS.len;

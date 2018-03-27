@@ -59,19 +59,11 @@ size_t saveFrame
 {
    size_t r= 0;
    char path[256];
-   //int t= 3;
-   printf("saveFrame(%s)\n", pA->dfi.outPath);
    if (pFB && pFB->pAB && pO)
    {
       snprintf(path, sizeof(path)-1, "%s/gsrd%05lu(%lu,%lu,2)F64.raw", pA->dfi.outPath, pFB->iter, pO->def.x, pO->def.y);
-      do
-      {
-         r= saveBuff(pFB->pAB, path, sizeof(Scalar) * pO->n);
-      } while (0); // ((r <= 0) && (t-- > 0) && sleep(1));
-      //if (r > 0)
-      {
-         printf("saveFrame() - %s %p %zu bytes\n", path, pFB->pAB, r);
-      }
+      r= saveBuff(pFB->pAB, path, sizeof(Scalar) * pO->n);
+      printf("saveFrame() - %s %p %zu bytes\n", path, pFB->pAB, r);
    }
    return(r);
 } // saveFrame
@@ -189,7 +181,7 @@ int main ( int argc, char* argv[] )
          gCtx.i= 0;
          afb&= 0x3;
          pFrame= gCtx.hbt.hfb + afb;
-         if (0 == loadBuff(pFrame->pAB, pDFI->inPath, pDFI->bytes))  //printf("nB=%zu\n",
+         if (0 == loadBuff(pFrame->pAB, pDFI->initFile, pDFI->bytes))  //printf("nB=%zu\n",
          {
             initHFB(pFrame, gCtx.org.def, 32);
             saveFrame(pFrame, &(gCtx.org), &ai);

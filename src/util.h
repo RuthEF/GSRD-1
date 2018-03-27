@@ -69,11 +69,13 @@ typedef struct { U16 start, len; } ScanSeg;
 
 typedef struct
 {
-   const char  *inPath, *outPath, *name;
+   const char  *initFile, *inPath, *outPath, *name;
    size_t      bytes;
    ScanSeg     vSS;
    int         v[4], nV;
    U8          elemBits;
+   U8          remBuff;
+   char        buff[254];
 } DataFileInfo;
 
 typedef struct
