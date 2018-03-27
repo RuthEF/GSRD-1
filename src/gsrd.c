@@ -100,10 +100,17 @@ void frameStat (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * c
 
 void summarise (HostFB * const pF, const ImgOrg * const pO)
 {  //procF
+   FSFmt fmt;
+
    frameStat(&(pF->s), pF->pAB, pO);
+
    printf("summarise() - \n\t%zu\tN\tmin\tmax\tsum\tmean\tvar\n", pF->iter);
-   printNFS("\tA: ", pF->s.a, 2, " | <=0 ", "\n");
-   printNFS("\tB: ", pF->s.b, 2, " | <=0 ", "\n");
+   fmt.pFtr= "\n"; fmt.pSep= " | <=0 ";
+   fmt.minPer= 5000; fmt.sPer= 100.0 / (pO->def.x * pO->def.y);
+   fmt.pHdr= "\tA: "; 
+   printNFS(pF->s.a, 2, &fmt);
+   fmt.pHdr= "\tB: "; 
+   printNFS(pF->s.b, 2, &fmt);
 } // summarise
 
 void compare (HostFB * const pF1, HostFB * const pF2, const ImgOrg * const pO, const Scalar eps)
@@ -114,6 +121,7 @@ void compare (HostFB * const pF1, HostFB * const pF2, const ImgOrg * const pO, c
    const Scalar * const pA2= pF2->pAB;
    const Scalar * const pB2= pF2->pAB + pO->stride[3];
    FieldStat sa[3], sb[3];
+   FSFmt fmt;
    size_t i;
 
    printf("compare() - iter: %zu\t\t%zu\n", pF1->iter, pF2->iter);
@@ -131,8 +139,12 @@ void compare (HostFB * const pF1, HostFB * const pF2, const ImgOrg * const pO, c
       statAdd(sb + ((db < -eps) | ((db > eps)<<1)), db);
    }
    printf("\tDiff: N\tmin\tmax\tsum\tmean\tvar\n");
-   printNFS("\tdA: ", sa, 3, " | <>e ", "\n");
-   printNFS("\tdB: ", sb, 3, " | <>e ", "\n");
+   fmt.pFtr= "\n"; fmt.pSep= " | <>e ";
+   fmt.minPer= 5000; fmt.sPer= 100.0 / n;
+   fmt.pHdr= "\tdA: "; 
+   printNFS(sa, 3, &fmt);
+   fmt.pHdr= "\tdB: ";
+   printNFS(sb, 3, &fmt);
 } // compare
 
 int main ( int argc, char* argv[] )

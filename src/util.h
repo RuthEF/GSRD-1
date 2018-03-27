@@ -48,7 +48,7 @@ typedef unsigned long  U32;
 typedef double SMVal; // Stat measure value
 typedef struct
 {
-   SMVal m[3];
+   SMVal    m[3];
 } StatMom;
 
 typedef struct

@@ -163,6 +163,7 @@ void initNFS (FieldStat fs[], const U32 nFS, const Scalar * const pS, const U32 
       {
          Scalar s= pS[i];
          fs[i].min= fs[i].max= s;
+         fs[i].n= 1;
          fs[i].s.m[0]= 1;
          fs[i].s.m[1]= s;
          fs[i].s.m[2]= s * s;
@@ -173,7 +174,7 @@ void initNFS (FieldStat fs[], const U32 nFS, const Scalar * const pS, const U32 
    {
       fs[i].min= M_INF;
       fs[i].max= -M_INF;
-
+      fs[i].n= 0;
       fs[i].s.m[0]= 0;
       fs[i].s.m[1]= 0;
       fs[i].s.m[2]= 0;
@@ -185,29 +186,42 @@ void statAdd (FieldStat * const pFS, Scalar s)
 {
    if (s < pFS->min) { pFS->min= s; }
    if (s > pFS->max) { pFS->max= s; }
+   pFS->n++;
    pFS->s.m[0]+= 1;
    pFS->s.m[1]+= s;
    pFS->s.m[2]+= s * s;
 } // statAdd
 
-void printNFS (const char *pHdr, const FieldStat fs[], const U32 nFS, const char *pFS, const char *pFtr)
+void printNFS (const FieldStat fs[], const U32 nFS, const FSFmt * pFmt)
 {
    //if (sizeof(SMVal) > sizeof(double)) { fmtStr= "%LG"; }
+   FSFmt fmt = { "", " ", "\n", 0, 0, };
    int nS= nFS;
-   if (pHdr && pHdr[0]) { printf("%s", pHdr); }
+
+   if (pFmt)
+   {
+      if (pFmt->pHdr) { fmt.pHdr= pFmt->pHdr; }
+      if (pFmt->pSep) { fmt.pSep= pFmt->pSep; }
+      if (pFmt->pFtr) { fmt.pFtr= pFmt->pFtr; }
+      fmt.minPer= pFmt->minPer;
+      if (pFmt->sPer > 0) { fmt.sPer= pFmt->sPer; }
+   }
+   printf("%s", fmt.pHdr);
    for (U32 i= 0; i < nFS; ++i )
    {
-      printf("%G", fs[i].s.m[0]);
+      if ((fs[i].n >= fmt.minPer) && (fmt.sPer > 0)) { printf("%.3f%%", fs[i].n * fmt.sPer); }
+      else { printf("%zu", fs[i].n); }
+
       if (fs[i].s.m[0] > 0)
       {
-         printf(" %G %G", fs[i].min, fs[i].max);
-         if (fs[i].s.m[0] > 1)
+         printf(" %.3f %.3f", fs[i].min, fs[i].max);
+         if (fs[i].n > 1)
          {
             StatRes1 r;
             if (statGetRes1(&r, &(fs[i].s), 0)) { printf(" %G %G %G", fs[i].s.m[1], r.m, r.v); }
          }
       }
-      if (pFS && pFS[0] && (--nS > 0)) { printf("%s", pFS); }
+      if (--nS > 0) { printf("%s", fmt.pSep); }
    }
-   if (pFtr && pFtr[0]) { printf("%s", pFtr); }
+   printf("%s", fmt.pFtr);
 } // printNFS

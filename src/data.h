@@ -55,8 +55,9 @@ typedef struct
 
 typedef struct
 {
-   Scalar min, max;
-   StatMom s;
+   Scalar   min, max;
+   size_t   n;
+   StatMom  s;
 } FieldStat;
 
 typedef struct
@@ -77,6 +78,12 @@ typedef struct
    Scalar   *pC; // conservation tally field
 } HostBuffTab;
 
+typedef struct
+{
+   const char *pHdr, *pFtr, *pSep;
+   size_t minPer; // Min values to present as percentage
+   Scalar sPer;   // Percentage scale
+} FSFmt;
 
 /***/
 
@@ -93,6 +100,6 @@ extern size_t initHFB (HostFB * const pB, const V2U32 d, const U16 step);
 
 extern void initNFS (FieldStat fs[], const U32 nFS, const Scalar * const pS, const U32 mS);
 extern void statAdd (FieldStat * const pFS, Scalar s);
-extern void printNFS (const char *pHdr, const FieldStat fs[], const U32 nFS, const char *pFS, const char *pFtr);
+extern void printNFS (const FieldStat fs[], const U32 nFS, const FSFmt * pFmt);
 
 #endif // DATA_H
