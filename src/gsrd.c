@@ -58,17 +58,22 @@ size_t saveFrame
 )
 {
    size_t r= 0;
-   char path[256];
    if (pFB && pFB->pAB && pO)
    {
+      char path[256];
+      int m= sizeof(path)-1, n= 0;
+
       //if (NULL == pAI->dfi.outPath) { pAI->dfi.outPath= pAI->dfi.inPath; }
-      const char *oP= pA->dfi.outPath;
-      const char *oN= pA->dfi.outName;
 
-      if (NULL == oP) { oP= ""; }
-      if (NULL == oN) { oN= "gsrd"; }
+      if (pA->dfi.outPath)
+      {
+         n+= snprintf(path+n, m-n, "%s", pA->dfi.outPath);
+         if ('\\' != path[n-1]) { path[n++]= '\\'; path[n]= 0; }
+      }
+      if (pA->dfi.outName) { n+= snprintf(path+n, m-n, "%s", pA->dfi.outName); }
+      else { n+= snprintf(path+n, m-n, "%s", "gsrd"); } 
 
-      snprintf(path, sizeof(path)-1, "%s%s%05lu(%lu,%lu,2)F64.raw", oP, oN, pFB->iter, pO->def.x, pO->def.y);
+      n+= snprintf(path+n, m-n, "%05lu(%lu,%lu,2)F64.raw", pFB->iter, pO->def.x, pO->def.y);
       r= saveBuff(pFB->pAB, path, sizeof(Scalar) * pO->n);
       printf("saveFrame() - %s %p %zu bytes\n", path, pFB->pAB, r);
    }
