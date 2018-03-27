@@ -209,12 +209,12 @@ void printNFS (const FieldStat fs[], const U32 nFS, const FSFmt * pFmt)
    printf("%s", fmt.pHdr);
    for (U32 i= 0; i < nFS; ++i )
    {
-      if ((fs[i].n >= fmt.minPer) && (fmt.sPer > 0)) { printf("%.3f%%", fs[i].n * fmt.sPer); }
+      if ((fs[i].n >= fmt.minPer) && (fmt.sPer > 0)) { printf("%.1f%%", fs[i].n * fmt.sPer); }
       else { printf("%zu", fs[i].n); }
 
       if (fs[i].s.m[0] > 0)
       {
-         printf(" %.3f %.3f", fs[i].min, fs[i].max);
+         printf(" %G %G", fs[i].min, fs[i].max);
          if (fs[i].n > 1)
          {
             StatRes1 r;

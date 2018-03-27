@@ -58,18 +58,19 @@ size_t saveFrame
 )
 {
    size_t r= 0;
-   char name[64];
+   char path[256];
    //int t= 3;
+   printf("saveFrame(%s)\n", pA->dfi.outPath);
    if (pFB && pFB->pAB && pO)
    {
-      snprintf(name, sizeof(name)-1, "%s/gsrd%05lu(%lu,%lu,2)F64.raw", pA->dfi.outPath, pFB->iter, pO->def.x, pO->def.y);
+      snprintf(path, sizeof(path)-1, "%s/gsrd%05lu(%lu,%lu,2)F64.raw", pA->dfi.outPath, pFB->iter, pO->def.x, pO->def.y);
       do
       {
-         r= saveBuff(pFB->pAB, name, sizeof(Scalar) * pO->n);
+         r= saveBuff(pFB->pAB, path, sizeof(Scalar) * pO->n);
       } while (0); // ((r <= 0) && (t-- > 0) && sleep(1));
       //if (r > 0)
       {
-         printf("saveFrame() - %s %p %zu bytes\n", name, pFB->pAB, r);
+         printf("saveFrame() - %s %p %zu bytes\n", path, pFB->pAB, r);
       }
    }
    return(r);
@@ -104,7 +105,7 @@ void summarise (HostFB * const pF, const ImgOrg * const pO)
 
    frameStat(&(pF->s), pF->pAB, pO);
 
-   printf("summarise() - \n\t%zu\tN\tmin\tmax\tsum\tmean\tvar\n", pF->iter);
+   printf("summarise() - \n\t%zu  N min max sum mean var\n", pF->iter);
    fmt.pFtr= "\n"; fmt.pSep= " | <=0 ";
    fmt.minPer= 5000; fmt.sPer= 100.0 / (pO->def.x * pO->def.y);
    fmt.pHdr= "\tA: "; 
@@ -138,7 +139,7 @@ void compare (HostFB * const pF1, HostFB * const pF2, const ImgOrg * const pO, c
       statAdd(sa + ((da < -eps) | ((da > eps)<<1)), da);
       statAdd(sb + ((db < -eps) | ((db > eps)<<1)), db);
    }
-   printf("\tDiff: N\tmin\tmax\tsum\tmean\tvar\n");
+   printf("\tDiff: N min max sum mean var\n");
    fmt.pFtr= "\n"; fmt.pSep= " | <>e ";
    fmt.minPer= 5000; fmt.sPer= 100.0 / n;
    fmt.pHdr= "\tdA: "; 
