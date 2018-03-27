@@ -106,9 +106,33 @@ void summarise (HostFB * const pF, const ImgOrg * const pO)
    printNFS("\tB: ", pF->s.b, 2, " | <=0 ", "\n");
 } // summarise
 
-void compare (HostFB * const pF1, HostFB * const pF2, const ImgOrg * const pO)
+void compare (HostFB * const pF1, HostFB * const pF2, const ImgOrg * const pO, const Scalar eps)
 {
+   const size_t n= pO->def.x * pO->def.y; // pO->n / 2
+   const Scalar * const pA1= pF1->pAB;
+   const Scalar * const pB1= pF1->pAB + pO->stride[3];
+   const Scalar * const pA2= pF2->pAB;
+   const Scalar * const pB2= pF2->pAB + pO->stride[3];
+   FieldStat sa[3], sb[3];
+   size_t i;
+
    printf("compare() - iter: %zu\t\t%zu\n", pF1->iter, pF2->iter);
+
+   initNFS(sa, 3, NULL, 0);
+   initNFS(sb, 3, NULL, 0);
+   
+   for (i=1; i < n; i++)
+   {
+      const Index j= i * pO->stride[0];
+
+      const Scalar da= pA1[j] - pA2[j];
+      const Scalar db= pB1[j] - pB2[j];
+      statAdd(sa + ((da < -eps) | ((da > eps)<<1)), da);
+      statAdd(sb + ((db < -eps) | ((db > eps)<<1)), db);
+   }
+   printf("\tDiff: N\tmin\tmax\tsum\tmean\tvar\n");
+   printNFS("\tdA: ", sa, 3, " | <>e ", "\n");
+   printNFS("\tdB: ", sb, 3, " | <>e ", "\n");
 } // compare
 
 int main ( int argc, char* argv[] )
@@ -187,7 +211,7 @@ int main ( int argc, char* argv[] )
          HostFB *pF2= gCtx.hbt.hfb+fIdx[1];
          pFrame=  gCtx.hbt.hfb+fIdx[0];
          //if (pFrame->iter == pF1->iter) 
-         { compare(pFrame, pF2, &(gCtx.org)); }
+         { compare(pFrame, pF2, &(gCtx.org), 1.0/(1<<30)); }
       }
    }
    releaseCtx(&gCtx);

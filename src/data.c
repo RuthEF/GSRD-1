@@ -192,14 +192,21 @@ void statAdd (FieldStat * const pFS, Scalar s)
 
 void printNFS (const char *pHdr, const FieldStat fs[], const U32 nFS, const char *pFS, const char *pFtr)
 {
+   //if (sizeof(SMVal) > sizeof(double)) { fmtStr= "%LG"; }
    int nS= nFS;
    if (pHdr && pHdr[0]) { printf("%s", pHdr); }
    for (U32 i= 0; i < nFS; ++i )
    {
-      StatRes1 r;
-      printf("%G %G %G", fs[i].s.m[0], fs[i].min, fs[i].max);
-      //if (sizeof(SMVal) > sizeof(double)) { fsFmtStr= "%LG, %LG"; }
-      if (statGetRes1(&r, &(fs[i].s), 0)) { printf(" %G %G %G", fs[i].s.m[1], r.m, r.v); }
+      printf("%G", fs[i].s.m[0]);
+      if (fs[i].s.m[0] > 0)
+      {
+         printf(" %G %G", fs[i].min, fs[i].max);
+         if (fs[i].s.m[0] > 1)
+         {
+            StatRes1 r;
+            if (statGetRes1(&r, &(fs[i].s), 0)) { printf(" %G %G %G", fs[i].s.m[1], r.m, r.v); }
+         }
+      }
       if (pFS && pFS[0] && (--nS > 0)) { printf("%s", pFS); }
    }
    if (pFtr && pFtr[0]) { printf("%s", pFtr); }
