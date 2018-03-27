@@ -118,7 +118,7 @@ void summarise (HostFB * const pF, const ImgOrg * const pO)
    printNFS(pF->s.b, 2, &fmt);
 } // summarise
 
-void compare (HostFB * const pF1, HostFB * const pF2, const ImgOrg * const pO, const Scalar eps)
+size_t compare (HostFB * const pF1, HostFB * const pF2, const ImgOrg * const pO, const Scalar eps)
 {
    const size_t n= pO->def.x * pO->def.y; // pO->n / 2
    const Scalar * const pA1= pF1->pAB;
@@ -129,7 +129,7 @@ void compare (HostFB * const pF1, HostFB * const pF2, const ImgOrg * const pO, c
    FSFmt fmt;
    size_t i;
 
-   printf("compare() - iter: %zu\t\t%zu\n", pF1->iter, pF2->iter);
+   printf("----\ncompare() - iter: %zu\t\t%zu\n", pF1->iter, pF2->iter);
 
    initNFS(sa, 3, NULL, 0);
    initNFS(sb, 3, NULL, 0);
@@ -150,6 +150,8 @@ void compare (HostFB * const pF1, HostFB * const pF2, const ImgOrg * const pO, c
    printNFS(sa, 3, &fmt);
    fmt.pHdr= "\tdB: ";
    printNFS(sb, 3, &fmt);
+
+   return(sa[1].n + sa[2].n + sb[1].n + sb[2].n);
 } // compare
 
 int main ( int argc, char* argv[] )
@@ -228,7 +230,7 @@ int main ( int argc, char* argv[] )
          HostFB *pF2= gCtx.hbt.hfb+fIdx[1];
          pFrame=  gCtx.hbt.hfb+fIdx[0];
          //if (pFrame->iter == pF1->iter) 
-         { compare(pFrame, pF2, &(gCtx.org), 1.0/(1<<30)); }
+         { nErr= compare(pFrame, pF2, &(gCtx.org), 1.0/(1<<30)); }
       }
    }
    releaseCtx(&gCtx);
