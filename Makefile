@@ -11,7 +11,7 @@ ACCFLAGS = -fast -acc=verystrict
 MAFLAGS  = $(ACCFLAGS) -ta=multicore $(OPT)
 GAFLAGS  = $(ACCFLAGS) -ta=nvidia:cc50 $(OPT)
 MGAFLAGS = $(ACCFLAGS) -ta=multicore,nvidia:cc50 $(OPT)
-RUNFLAGS = -A:A -I=2000,500
+RUNFLAGS = -A:A -I=2000,500 -O:raw
 
 TARGET = gsrd
 DATAFILE = "init/gsrd00000(1024,1024,2)F64.raw"
@@ -20,19 +20,19 @@ OBJEXT = o
 UNAME := $(shell uname -a)
 CCOUT := $(shell $(CC) 2>&1)
 
-# Fall back to standard LINUX tools if necessary
+# (Not working...) Fall back to standard LINUX tools if necessary
 ifeq ($(findstring "not found", $(CCOUT)), "not found")
 CC       = gcc
 CCFLAGS  = -std=c11 -W
 ACCFLAGS =
-RUNFLAGS = -A:N -I=2000,500
+RUNFLAGS = -A:N -I=2000,500 -O:raw
 endif
 
 ifeq ($(findstring RPi, $(UNAME)), RPi)
 CC       = gcc
 CCFLAGS  = -std=c11 -W
 DATAFILE = "init/gsrd00000(128,128,2)F64.raw"
-RUNFLAGS = -A:N -I=200,50
+RUNFLAGS = -A:N -I=200,50 -O:raw
 endif
 
 # Other environments, compilers, options...
@@ -40,7 +40,7 @@ ifeq ($(findstring Darwin, $(UNAME)), Darwin)
 CC = clang
 CCFLAGS  = -std=c11 -W
 DATAFILE = "init/gsrd00000(512,512,2)F64.raw"
-RUNFLAGS = -A:N -I=2000,500
+RUNFLAGS = -A:N -I=2000,500 -O:raw
 endif
 
 ifeq ($(findstring CYGWIN_NT, $(UNAME)), CYGWIN_NT)

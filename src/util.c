@@ -165,11 +165,11 @@ size_t scanDFI (DataFileInfo * pDFI, const char * const path)
    if (bytes > 0)
    {
       int nCh;
-
-      pDFI->initFile=   path;
+      const char *name=  stripPath(path);
+      pDFI->initFilePath=   path;
       pDFI->remBuff= sizeof(pDFI->buff)-1;
-      pDFI->name=  stripPath(path);
-      nCh= pDFI->name - path;
+      pDFI->outName= NULL;
+      nCh= name - path;
       if ((nCh > 0) && (nCh < pDFI->remBuff))
       {
          pDFI->inPath= pDFI->buff;
@@ -180,8 +180,8 @@ size_t scanDFI (DataFileInfo * pDFI, const char * const path)
       } else { pDFI->inPath= NULL; } // "./"; }
 
       pDFI->bytes= bytes;
-      pDFI->nV=    scanVI(pDFI->v, 4, &(pDFI->vSS), pDFI->name);
-      const char *p= pDFI->name + pDFI->vSS.start + pDFI->vSS.len;
+      pDFI->nV=    scanVI(pDFI->v, 4, &(pDFI->vSS), name);
+      const char *p= name + pDFI->vSS.start + pDFI->vSS.len;
       pDFI->elemBits= scanChZ(p, 'f');
       //if (0 == pDFI->elemBits) { pDFI->elemBits= 64; }
    }
@@ -244,7 +244,6 @@ int scanArgs (ArgInfo *pAI, const char * const a[], int nA)
          }
       }
    }
-   if (NULL == pAI->dfi.outPath) { pAI->dfi.outPath= pAI->dfi.inPath; }
    //if (0 == pAI->proc.flags) { pAI->proc.flags= PROC_FLAG_HOST|PROC_FLAG_GPU; }
    if (0 == pAI->proc.maxIter) { pAI->proc.maxIter= 5000; }
    if (0 == pAI->proc.subIter) { pAI->proc.subIter= 1000; }

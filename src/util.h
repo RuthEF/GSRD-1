@@ -69,7 +69,7 @@ typedef struct { U16 start, len; } ScanSeg;
 
 typedef struct
 {
-   const char  *initFile, *inPath, *outPath, *name;
+   const char  *initFilePath, *inPath, *outPath, *outName;
    size_t      bytes;
    ScanSeg     vSS;
    int         v[4], nV;

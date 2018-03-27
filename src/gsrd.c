@@ -61,7 +61,14 @@ size_t saveFrame
    char path[256];
    if (pFB && pFB->pAB && pO)
    {
-      snprintf(path, sizeof(path)-1, "%s/gsrd%05lu(%lu,%lu,2)F64.raw", pA->dfi.outPath, pFB->iter, pO->def.x, pO->def.y);
+      //if (NULL == pAI->dfi.outPath) { pAI->dfi.outPath= pAI->dfi.inPath; }
+      const char *oP= pA->dfi.outPath;
+      const char *oN= pA->dfi.outName;
+
+      if (NULL == oP) { oP= ""; }
+      if (NULL == oN) { oN= "gsrd"; }
+
+      snprintf(path, sizeof(path)-1, "%s%s%05lu(%lu,%lu,2)F64.raw", oP, oN, pFB->iter, pO->def.x, pO->def.y);
       r= saveBuff(pFB->pAB, path, sizeof(Scalar) * pO->n);
       printf("saveFrame() - %s %p %zu bytes\n", path, pFB->pAB, r);
    }
@@ -151,7 +158,7 @@ int main ( int argc, char* argv[] )
       if (ai.dfi.nV > 0)
       {
          size_t bits= ai.dfi.elemBits;
-         printf("%s -> v[%d]=(", ai.dfi.name, ai.dfi.nV);
+         printf("%s -> v[%d]=(", ai.dfi.initFilePath, ai.dfi.nV);
          for (int i=0; i < ai.dfi.nV; i++)
          {
             bits*= ai.dfi.v[i];
@@ -181,7 +188,7 @@ int main ( int argc, char* argv[] )
          gCtx.i= 0;
          afb&= 0x3;
          pFrame= gCtx.hbt.hfb + afb;
-         if (0 == loadBuff(pFrame->pAB, pDFI->initFile, pDFI->bytes))  //printf("nB=%zu\n",
+         if (0 == loadBuff(pFrame->pAB, pDFI->initFilePath, pDFI->bytes))  //printf("nB=%zu\n",
          {
             initHFB(pFrame, gCtx.org.def, 32);
             saveFrame(pFrame, &(gCtx.org), &ai);
