@@ -68,139 +68,6 @@ INLINE void proc1 (Scalar * const pR, const Scalar * const pI, const Index i, co
    pR[i+j]= b + laplace2D4S9P(pB, wrap, pP->kL.b) + rab2 - pP->kDB * b;
 } // proc1
 
-/** EXT **/
-
-/* /opt/pgi/linux.../2017/iclude/openacc.h
-
-typedef enum{
-        acc_device_none = 0,
-        acc_device_default = 1,
-        acc_device_host = 2,
-        acc_device_not_host = 3,
-        acc_device_nvidia = 4,
-        acc_device_radeon = 5,
-        acc_device_xeonphi = 6,
-        acc_device_pgi_opencl = 7,
-        acc_device_nvidia_opencl = 8,
-        acc_device_opencl = 9
-    }acc_device_t;
-
-void acc_set_default_async(int async);
-int acc_get_default_async(void);
-extern int acc_get_num_devices( acc_device_t devtype );
-extern acc_device_t acc_get_device(void);
-extern void acc_set_device_num( int devnum, acc_device_t devtype );
-extern int acc_get_device_num( acc_device_t devtype );
-extern void acc_init( acc_device_t devtype );
-extern void acc_shutdown( acc_device_t devtype );
-extern void acc_set_deviceid( int devid );
-extern int acc_get_deviceid( int devnum, acc_device_t devtype );
-extern int acc_async_test( __PGI_LLONG async );
-extern int acc_async_test_all(void);
-extern void acc_async_wait( __PGI_LLONG async );
-extern void acc_async_wait_all(void);
-extern void acc_wait( __PGI_LLONG async );
-extern void acc_wait_async( __PGI_LLONG arg, __PGI_LLONG async );
-extern void acc_wait_all(void);
-extern void acc_wait_all_async( __PGI_LLONG async );
-extern int acc_on_device( acc_device_t devtype );
-extern void acc_free(void*); */
-
-Bool32 procInitAcc (size_t f) // arg param ?
-{
-   int nInit= (0 == (f & (PROC_FLAG_ACCGPU|PROC_FLAG_ACCHOST)));
-#ifdef OPEN_ACC
-   int nNV= acc_get_num_devices( acc_device_nvidia );
-   int nH= acc_get_num_devices( acc_device_host );
-   int nNH= acc_get_num_devices( acc_device_not_host );
-   int id;
-
-   printf("procInitAcc() - nNV=%d, nH=%d (other=%d)\n", nNV, nH, nNH - nNV);
-   gDev.nDev= 0;
-   if (nNV > 0)
-   {
-      id= acc_get_device_num(acc_device_nvidia);
-      printf("\tNV:id=%d\n", id);
-      if (f & PROC_FLAG_ACCGPU)
-      {
-         id= nNV;
-         while (--id >= 0)
-         {
-            if (gDev.nDev < ACC_DEV_MAX)
-            {
-               gDev.d[gDev.nDev].c= acc_device_nvidia;
-               gDev.d[gDev.nDev].n= id;
-               ++gDev.nDev;
-            }
-            //acc_set_device_num( id, acc_device_nvidia );
-            //acc_init( acc_device_nvidia ); // get_err?
-            ++nInit;
-         }
-      }
-   }
-   if (nH > 0)
-   {
-      id= acc_get_device_num(acc_device_host);
-      printf("\tH:id=%d\n", id);
-      if (f & PROC_FLAG_ACCHOST)
-      {
-         id= nNH;
-         while (--id >= 0)
-         {
-            if (gDev.nDev < ACC_DEV_MAX)
-            {
-               gDev.d[gDev.nDev].c= acc_device_host;
-               gDev.d[gDev.nDev].n= id;
-               ++gDev.nDev;
-            }
-            //acc_set_device_num( id, acc_device_host );
-            //acc_init( acc_device_host );
-            ++nInit;
-         }
-      }
-   }
-   if (gDev.nDev > 0)
-   {
-      gDev.iCurr= 0;
-      acc_set_device_num( gDev.d[0].n, gDev.d[0].c );
-   }
-#endif // OPEN_ACC
-   return(nInit > 0);
-} // procInitAcc
-
-const char *procGetCurrAccTxt (char t[], int m)
-{
-   const AccDev * const pA= gDev.d + gDev.iCurr;
-   const char *s="C";
-#ifdef OPEN_ACC
-   switch (pA->c)
-   {
-      case acc_device_nvidia : s= "NV"; break;
-      case acc_device_host :   s= "H"; break;
-      default : s= "?"; break;
-   }
-#endif // OPEN_ACC
-   snprintf(t, m, "%s%u", s, pA->n);
-   return(t);
-} // procGetCurrAccTxt
-
-Bool32 procSetNextAcc (Bool32 wrap)
-{
-#ifdef OPEN_ACC
-   if (gDev.nDev > 0)
-   {
-      U8 iN= gDev.iCurr + 1;
-      if (wrap) { iN= iN % gDev.nDev; }
-      if (iN < gDev.nDev)
-      {
-         acc_set_device_num( gDev.d[iN].n, gDev.d[iN].c );
-         gDev.iCurr= iN;
-         return(TRUE);
-      }
-   }
-#endif // OPEN_ACC
-   return(FALSE);
-} // procSetNextAcc
 
 /* Parameter variation
 void procVA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP)
@@ -365,16 +232,150 @@ void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO,
       }
 #endif
 #if 1	// The four corners: R,L * B,T
-      //pragma acc parallel
+      #pragma acc parallel
       {
-         proc1(pR, pS, 0, pO->stride[3], pO->wrap.c+0, pP);
-         proc1(pR, pS, pO->stride[1]-pO->stride[0], pO->stride[3], pO->wrap.c+2, pP);
-         proc1(pR, pS, pO->stride[2]-pO->stride[1], pO->stride[3], pO->wrap.d+0, pP);
-         proc1(pR, pS, pO->stride[2]-pO->stride[0], pO->stride[3], pO->wrap.d+2, pP);
+         proc1(pR, pS, pO->c[0], pO->stride[3], pO->wrap.c+0, pP);
+         proc1(pR, pS, pO->c[1], pO->stride[3], pO->wrap.c+2, pP);
+         proc1(pR, pS, pO->c[2], pO->stride[3], pO->wrap.d+0, pP);
+         proc1(pR, pS, pO->c[3], pO->stride[3], pO->wrap.d+2, pP);
       }
 #endif
    } // ... acc data ..
 } // procA
+
+/** EXT **/
+
+/* /opt/pgi/linux.../2017/iclude/openacc.h
+
+typedef enum{
+        acc_device_none = 0,
+        acc_device_default = 1,
+        acc_device_host = 2,
+        acc_device_not_host = 3,
+        acc_device_nvidia = 4,
+        acc_device_radeon = 5,
+        acc_device_xeonphi = 6,
+        acc_device_pgi_opencl = 7,
+        acc_device_nvidia_opencl = 8,
+        acc_device_opencl = 9
+    }acc_device_t;
+
+void acc_set_default_async(int async);
+int acc_get_default_async(void);
+extern int acc_get_num_devices( acc_device_t devtype );
+extern acc_device_t acc_get_device(void);
+extern void acc_set_device_num( int devnum, acc_device_t devtype );
+extern int acc_get_device_num( acc_device_t devtype );
+extern void acc_init( acc_device_t devtype );
+extern void acc_shutdown( acc_device_t devtype );
+extern void acc_set_deviceid( int devid );
+extern int acc_get_deviceid( int devnum, acc_device_t devtype );
+extern int acc_async_test( __PGI_LLONG async );
+extern int acc_async_test_all(void);
+extern void acc_async_wait( __PGI_LLONG async );
+extern void acc_async_wait_all(void);
+extern void acc_wait( __PGI_LLONG async );
+extern void acc_wait_async( __PGI_LLONG arg, __PGI_LLONG async );
+extern void acc_wait_all(void);
+extern void acc_wait_all_async( __PGI_LLONG async );
+extern int acc_on_device( acc_device_t devtype );
+extern void acc_free(void*); */
+
+Bool32 procInitAcc (size_t f) // arg param ?
+{
+   int nInit= (0 == (f & (PROC_FLAG_ACCGPU|PROC_FLAG_ACCHOST)));
+#ifdef OPEN_ACC
+   int nNV= acc_get_num_devices( acc_device_nvidia );
+   int nH= acc_get_num_devices( acc_device_host );
+   int nNH= acc_get_num_devices( acc_device_not_host );
+   int id;
+
+   printf("procInitAcc() - nNV=%d, nH=%d (other=%d)\n", nNV, nH, nNH - nNV);
+   gDev.nDev= 0;
+   if (nNV > 0)
+   {
+      id= acc_get_device_num(acc_device_nvidia);
+      printf("\tNV:id=%d\n", id);
+      if (f & PROC_FLAG_ACCGPU)
+      {
+         id= nNV;
+         while (--id >= 0)
+         {
+            if (gDev.nDev < ACC_DEV_MAX)
+            {
+               gDev.d[gDev.nDev].c= acc_device_nvidia;
+               gDev.d[gDev.nDev].n= id;
+               ++gDev.nDev;
+            }
+            //acc_set_device_num( id, acc_device_nvidia );
+            //acc_init( acc_device_nvidia ); // get_err?
+            ++nInit;
+         }
+      }
+   }
+   if (nH > 0)
+   {
+      id= acc_get_device_num(acc_device_host);
+      printf("\tH:id=%d\n", id);
+      if (f & PROC_FLAG_ACCHOST)
+      {
+         id= nNH;
+         while (--id >= 0)
+         {
+            if (gDev.nDev < ACC_DEV_MAX)
+            {
+               gDev.d[gDev.nDev].c= acc_device_host;
+               gDev.d[gDev.nDev].n= id;
+               ++gDev.nDev;
+            }
+            //acc_set_device_num( id, acc_device_host );
+            //acc_init( acc_device_host );
+            ++nInit;
+         }
+      }
+   }
+   if (gDev.nDev > 0)
+   {
+      gDev.iCurr= 0;
+      acc_set_device_num( gDev.d[0].n, gDev.d[0].c );
+   }
+#endif // OPEN_ACC
+   return(nInit > 0);
+} // procInitAcc
+
+const char *procGetCurrAccTxt (char t[], int m)
+{
+   const AccDev * const pA= gDev.d + gDev.iCurr;
+   const char *s="C";
+#ifdef OPEN_ACC
+   switch (pA->c)
+   {
+      case acc_device_nvidia : s= "NV"; break;
+      case acc_device_host :   s= "H"; break;
+      default : s= "?"; break;
+   }
+#endif // OPEN_ACC
+   snprintf(t, m, "%s%u", s, pA->n);
+   return(t);
+} // procGetCurrAccTxt
+
+Bool32 procSetNextAcc (Bool32 wrap)
+{
+#ifdef OPEN_ACC
+   if (gDev.nDev > 0)
+   {
+      U8 iN= gDev.iCurr + 1;
+      if (wrap) { iN= iN % gDev.nDev; }
+      if (iN < gDev.nDev)
+      {
+         acc_set_device_num( gDev.d[iN].n, gDev.d[iN].c );
+         gDev.iCurr= iN;
+         return(TRUE);
+      }
+   }
+#endif // OPEN_ACC
+   return(FALSE);
+} // procSetNextAcc
 
 U32 proc2IA (Scalar * restrict pTR, Scalar * restrict pSR, const ImgOrg * pO, const ParamVal * pP, const U32 nI)
 {

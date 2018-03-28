@@ -34,9 +34,7 @@ const char *stripPath (const char *path)
    return(NULL);
 } // stripPath
 
-const char *extractPath (char s[], int m, const char *pfe)
-{
-} // extractPath
+// const char *extractPath (char s[], int m, const char *pfe) {} // extractPath
 
 size_t fileSize (const char * const path)
 {

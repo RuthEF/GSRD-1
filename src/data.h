@@ -50,6 +50,7 @@ typedef struct
    V2U32  def;
    Stride stride[4];
    size_t n;
+Index c[4];
    BoundaryWrap wrap;
 } ImgOrg;
 
