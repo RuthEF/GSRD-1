@@ -211,14 +211,14 @@ void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO,
             const Index offsX= pO->stride[1] - pO->stride[0];
             proc1(pR, pS, y * pO->stride[1] + offsX, pO->stride[3], pO->wrap.v+2, pP);
          }
-      //} // ... acc parallel
+      } // ... acc parallel
 
          // The four corners: R,L * B,T
          proc1XY(pR, pS, 0, 0, pO, pP);
          proc1XY(pR, pS, pO->def.x-1, 0, pO, pP);
          proc1XY(pR, pS, 0, pO->def.y-1, pO, pP);
          proc1XY(pR, pS, pO->def.x-1, pO->def.y-1, pO, pP);
-      } // ... acc parallel
+      //} // ... acc parallel
    } // ... acc data ..
 } // procA
 
