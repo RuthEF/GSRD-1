@@ -14,12 +14,13 @@ static void initWrap (BoundaryWrap *pW, const Stride stride[4])
    pW->v[0]= stride[1] - stride[0]; pW->v[1]= stride[0];
    pW->v[2]= stride[1]; pW->v[3]= -stride[1];
    pW->v[4]= -stride[0]; pW->v[5]= stride[0] - stride[1];
-
+/*
    pW->c[0]= stride[1] - stride[0]; pW->c[1]= stride[0];
    pW->c[2]= stride[1]; pW->c[3]= stride[2] - stride[1];
    pW->c[4]= -stride[0]; pW->c[5]= stride[0] - stride[1];
    pW->d[0]= pW->c[0]; pW->d[1]= pW->c[1]; pW->d[4]= pW->c[4]; pW->d[5]= pW->c[5];
    pW->d[2]= -pW->c[2]; pW->d[3]= -pW->c[3];
+*/
 } // initWrap
 
 void initOrg (ImgOrg * const pO, U16 w, U16 h, U8 flags)
@@ -51,13 +52,6 @@ void initOrg (ImgOrg * const pO, U16 w, U16 h, U8 flags)
       pO->nhStepWrap[1][1]= pO->nhStepWrap[0][1] + -pO->stride[1];
       pO->nhStepWrap[1][2]= pO->nhStepWrap[0][2] + pO->stride[2];
       pO->nhStepWrap[1][3]= pO->nhStepWrap[0][3] + -pO->stride[2];
-// corners
-      pO->cn[0]= 0 * pO->stride[0] + 0 * pO->stride[1];               // 0;
-      pO->cn[1]= (pO->def.x-1) * pO->stride[0] + 0 * pO->stride[1];   // pO->stride[1] - pO->stride[0];
-      pO->cn[2]= 0 * pO->stride[0] + (pO->def.y-1) * pO->stride[1];   // pO->stride[2] - pO->stride[1];
-      pO->cn[3]= (pO->def.x-1) * pO->stride[0] + (pO->def.y-1) * pO->stride[1]; // pO->stride[2] - pO->stride[0];
-      printf("c[4]= %d %d %d %d\n", pO->cn[0], pO->cn[1], pO->cn[2], pO->cn[3]);
-      printf("  ? = %d %d %d %d\n", 0, pO->stride[1] - pO->stride[0], pO->stride[2] - pO->stride[1], pO->stride[2] - pO->stride[0]);
 
       initWrap(&(pO->wrap), pO->stride);
    }
@@ -213,7 +207,7 @@ void statAdd (FieldStat * const pFS, Scalar s)
 void printNFS (const FieldStat fs[], const U32 nFS, const FSFmt * pFmt)
 {
    //if (sizeof(SMVal) > sizeof(double)) { fmtStr= "%LG"; }
-   FSFmt fmt = { "", " ", "\n", 0, 0, };
+   FSFmt fmt = { "", " ", "\n", {0, 0}, 0, };
    int nS= nFS;
 
    if (pFmt)
@@ -221,13 +215,14 @@ void printNFS (const FieldStat fs[], const U32 nFS, const FSFmt * pFmt)
       if (pFmt->pHdr) { fmt.pHdr= pFmt->pHdr; }
       if (pFmt->pSep) { fmt.pSep= pFmt->pSep; }
       if (pFmt->pFtr) { fmt.pFtr= pFmt->pFtr; }
-      fmt.minPer= pFmt->minPer;
+      fmt.limPer= pFmt->limPer;
       if (pFmt->sPer > 0) { fmt.sPer= pFmt->sPer; }
    }
    printf("%s", fmt.pHdr);
    for (U32 i= 0; i < nFS; ++i )
    {
-      if ((fs[i].n >= fmt.minPer) && (fmt.sPer > 0)) { printf("%.1f%%", fs[i].n * fmt.sPer); }
+      if ((fs[i].n >= fmt.limPer.min) && (fs[i].n <= fmt.limPer.max) && (fmt.sPer > 0))
+      { printf("%.1f%%", fs[i].n * fmt.sPer); }
       else { printf("%zu", fs[i].n); }
 
       if (fs[i].s.m[0] > 0)

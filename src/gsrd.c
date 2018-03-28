@@ -104,14 +104,15 @@ void frameStat (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * c
 } // frameStat
 
 void summarise (HostFB * const pF, const ImgOrg * const pO)
-{  //procF
+{
+   const size_t n= pO->def.x * pO->def.y; // pO->n / 2
    FSFmt fmt;
 
    frameStat(&(pF->s), pF->pAB, pO);
 
    printf("summarise() - \n\t%zu  N min max sum mean var\n", pF->iter);
    fmt.pFtr= "\n"; fmt.pSep= " | <=0 ";
-   fmt.minPer= 5000; fmt.sPer= 100.0 / (pO->def.x * pO->def.y);
+   fmt.limPer.min= 5000; fmt.limPer.max= n; fmt.sPer= 100.0 / n;
    fmt.pHdr= "\tA: "; 
    printNFS(pF->s.a, 2, &fmt);
    fmt.pHdr= "\tB: "; 
@@ -162,7 +163,7 @@ size_t compare (HostFB * const pF1, HostFB * const pF2, const ImgOrg * const pO,
    }
    printf("\tDiff: N min max sum mean var\n");
    fmt.pFtr= "\n"; fmt.pSep= " | <>e ";
-   fmt.minPer= 5000; fmt.sPer= 100.0 / n;
+   fmt.limPer.min= 5000; fmt.limPer.max= n; fmt.sPer= 100.0 / n;
    fmt.pHdr= "\tdA: "; 
    printNFS(sa, 3, &fmt);
    fmt.pHdr= "\tdB: ";

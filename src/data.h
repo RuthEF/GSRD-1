@@ -42,7 +42,7 @@ typedef struct
 
 typedef struct
 {
-   Stride h[6], v[6], c[6], d[6];
+   Stride h[6], v[6];
 } BoundaryWrap;
 
 typedef struct
@@ -51,7 +51,6 @@ typedef struct
    Stride stride[4];
    size_t n;
    Stride nhStepWrap[2][4]; // neighbourhood 
-   Index  cn[4]; // corners
    BoundaryWrap wrap;
 } ImgOrg;
 
@@ -83,8 +82,8 @@ typedef struct
 typedef struct
 {
    const char *pHdr, *pFtr, *pSep;
-   size_t minPer; // Min values to present as percentage
-   Scalar sPer;   // Percentage scale
+   MinMaxZU limPer; // Limit count to present as percentage
+   Scalar   sPer;   // Percentage scale
 } FSFmt;
 
 /***/

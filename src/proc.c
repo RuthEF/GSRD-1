@@ -216,6 +216,18 @@ void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO,
             proc1(pR, pS, x * pO->stride[0] + offsY, pO->stride[3], pO->wrap.h+2, pP);
          }
          // left & right
+#if 1
+         #pragma acc loop vector
+         for (U32 y= 0; y < pO->def.y; ++y )
+         {
+            proc1XY(pR, pS, 0, y, pO, pP);
+         }
+         #pragma acc loop vector
+         for (U32 y= 0; y < pO->def.y; ++y )
+         {
+            proc1XY(pR, pS, pO->def.x-1, y, pO, pP);
+         }
+#else
          #pragma acc loop vector
          for (U32 y= 1; y < (pO->def.y-1); ++y )
          {
@@ -227,14 +239,15 @@ void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO,
             const Index offsX= pO->stride[1] - pO->stride[0];
             proc1(pR, pS, y * pO->stride[1] + offsX, pO->stride[3], pO->wrap.v+2, pP);
          }
+#endif
       } // ... acc parallel
 
-         // The four corners: R,L * B,T
+      /* The four corners: R,L * B,T
          proc1XY(pR, pS, 0, 0, pO, pP);
          proc1XY(pR, pS, pO->def.x-1, 0, pO, pP);
          proc1XY(pR, pS, 0, pO->def.y-1, pO, pP);
          proc1XY(pR, pS, pO->def.x-1, pO->def.y-1, pO, pP);
-      //} // ... acc parallel
+      */
    } // ... acc data ..
 } // procA
 
@@ -379,8 +392,8 @@ U32 proc2IA (Scalar * restrict pTR, Scalar * restrict pSR, const ImgOrg * pO, co
    {
       for (U32 i= 0; i < nI; ++i )
       {
-         procAXY(pTR,pSR,pO,&(pP->base));
-         procAXY(pSR,pTR,pO,&(pP->base));
+         procA(pTR,pSR,pO,&(pP->base));
+         procA(pSR,pTR,pO,&(pP->base));
       }
    }
    return(2*nI);
@@ -391,11 +404,11 @@ U32 proc2I1A (Scalar * restrict pR, Scalar * restrict pS, const ImgOrg * pO, con
    #pragma acc data present_or_create( pR[:pO->n] ) present_or_copyin( pO[:1], pP[:1] ) \
                     copyin( pS[:pO->n] ) copyout( pR[:pO->n] )
    {
-      procAXY(pR,pS,pO,&(pP->base));
+      procA(pR,pS,pO,&(pP->base));
       for (U32 i= 0; i < nI; ++i )
       {
-         procAXY(pS,pR,pO,&(pP->base));
-         procAXY(pR,pS,pO,&(pP->base));
+         procA(pS,pR,pO,&(pP->base));
+         procA(pR,pS,pO,&(pP->base));
       }
    }
    return(2*nI+1);
