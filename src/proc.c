@@ -180,32 +180,39 @@ void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO,
       }
 
       // Boundaries
-#if 1 // Non-corner Edges
-
+      // Non-corner Edges
+   #pragma acc parallel
+   {
       // Horizontal top & bottom
-      #pragma acc parallel loop
+      #pragma acc loop vector
       for (U32 x= 1; x < (pO->def.x-1); ++x )
       {
          const Index i1= x * pO->stride[0];
          const Index j1= i1 + pO->stride[3];
          const Scalar a1= pS[i1];
          const Scalar b1= pS[j1];
-         Scalar rab2= pP->kRR * a1 * b1 * b1;
+         const Scalar rab2= pP->kRR * a1 * b1 * b1;
          //const Scalar ar1= KRA0 * (1 - a1);
          //const Scalar bd1= KDB0 * b1;
          pR[i1]= a1 + laplace2D4S9P(pS+i1, pO->wrap.h+0, pP->kL.a) - rab2 + pP->kRA * (1 - a1);
          pR[j1]= b1 + laplace2D4S9P(pS+j1, pO->wrap.h+0, pP->kL.b) + rab2 - pP->kDB * b1;
-
+      }
+      #pragma acc loop vector
+      for (U32 x= 1; x < (pO->def.x-1); ++x )
+      {
          const Stride offsY= pO->stride[2] - pO->stride[1];
-         const Index i2= i1 + offsY;
-         const Index j2= j1 + offsY;
+         //const Index i2= i1 + offsY;
+         //const Index j2= j1 + offsY;
+         const Index i2= x * pO->stride[0] + offsY;
+         const Index j2= i2 + pO->stride[3];
          const Scalar a2= pS[i2];
          const Scalar b2= pS[j2];
-         rab2= pP->kRR * a2 * b2 * b2;
+         const Scalar rab2= pP->kRR * a2 * b2 * b2;
          pR[i2]= a2 + laplace2D4S9P(pS+i2, pO->wrap.h+2, pP->kL.a) - rab2 + pP->kRA * (1 - a2);
          pR[j2]= b2 + laplace2D4S9P(pS+j2, pO->wrap.h+2, pP->kL.b) + rab2 - pP->kDB * b2;
       }
-#endif
+   } // ... acc parallel
+
 #if 1
 
       // left & right
@@ -232,7 +239,7 @@ void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO,
       }
 #endif
 #if 1	// The four corners: R,L * B,T
-      #pragma acc parallel
+      //pragma acc parallel
       {
          proc1(pR, pS, pO->c[0], pO->stride[3], pO->wrap.c+0, pP);
          proc1(pR, pS, pO->c[1], pO->stride[3], pO->wrap.c+2, pP);
