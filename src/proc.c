@@ -58,16 +58,28 @@ INLINE Scalar laplace2D4S9P (const Scalar * const pS, const Stride s[4], const S
 } // laplace2D4S9P
 
 //#pragma acc routine vector
-INLINE void proc1 (Scalar * const pR, const Scalar * const pI, const Index i, const Stride j, const Stride wrap[4], const BaseParamVal * const pP)
+INLINE void proc1 (Scalar * const pR, const Scalar * const pS, const Index i, const Stride j, const Stride wrap[4], const BaseParamVal * const pP)
 {
-   const Scalar * const pA= pI+i, a= *pA;
-   const Scalar * const pB= pI+i+j, b= *pB;
+   const Scalar * const pA= pS+i, a= *pA;
+   const Scalar * const pB= pS+i+j, b= *pB;
    const Scalar rab2= pP->kRR * a * b * b;
 
    pR[i]= a + laplace2D4S9P(pA, wrap, pP->kL.a) - rab2 + pP->kRA * (1 - a);
    pR[i+j]= b + laplace2D4S9P(pB, wrap, pP->kL.b) + rab2 - pP->kDB * b;
 } // proc1
 
+//#pragma acc routine vector
+INLINE void proc1XY (Scalar * const pR, const Scalar * const pS, const Index x, const Index y, const ImgOrg *pO, const BaseParamVal * const pP)
+{
+   Stride wrap[4];
+
+   wrap[0]= pO->nhStepWrap[ (x <= 0) ][0];
+   wrap[1]= pO->nhStepWrap[ (x >= (Index)(pO->def.x-1)) ][1];
+   wrap[2]= pO->nhStepWrap[ (y <= 0) ][2];
+   wrap[3]= pO->nhStepWrap[ (y >= (Index)(pO->def.y-1)) ][3];
+
+   proc1(pR, pS, x * pO->stride[0] + y * pO->stride[1], pO->stride[3], wrap, pP);
+} // proc1XY
 
 /* Parameter variation
 void procVA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP)
@@ -167,7 +179,7 @@ void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO,
          #pragma acc loop vector
          for (U32 x= 1; x < (pO->def.x-1); ++x )
          {
-            proc1(pR, pS, y * pO->stride[1] + x * pO->stride[0], pO->stride[3], pO->nh+0, pP);
+            proc1(pR, pS, y * pO->stride[1] + x * pO->stride[0], pO->stride[3], pO->nhStepWrap[0], pP);
          }
       }
 
@@ -202,10 +214,10 @@ void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO,
       //} // ... acc parallel
 
          // The four corners: R,L * B,T
-         proc1(pR, pS, pO->cn[0], pO->stride[3], pO->wrap.c+0, pP);
-         proc1(pR, pS, pO->cn[1], pO->stride[3], pO->wrap.c+2, pP);
-         proc1(pR, pS, pO->cn[2], pO->stride[3], pO->wrap.d+0, pP);
-         proc1(pR, pS, pO->cn[3], pO->stride[3], pO->wrap.d+2, pP);
+         proc1XY(pR, pS, 0, 0, pO, pP);
+         proc1XY(pR, pS, pO->def.x-1, 0, pO, pP);
+         proc1XY(pR, pS, 0, pO->def.y-1, pO, pP);
+         proc1XY(pR, pS, pO->def.x-1, pO->def.y-1, pO, pP);
       } // ... acc parallel
    } // ... acc data ..
 } // procA

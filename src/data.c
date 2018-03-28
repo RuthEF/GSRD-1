@@ -4,7 +4,7 @@
 
 
 /***/
-
+//deprecate
 static void initWrap (BoundaryWrap *pW, const Stride stride[4])
 {
    pW->h[0]= stride[1]; pW->h[1]= stride[2] - stride[1];	// 0..3 LO, 2..5 HI
@@ -42,10 +42,15 @@ void initOrg (ImgOrg * const pO, U16 w, U16 h, U8 flags)
       pO->stride[2]= h * pO->stride[1]; // plane
       pO->n= 2 * pO->stride[2]; // complete buffer
 // neighbours
-      pO->nh[0]= -pO->stride[0];
-      pO->nh[1]= pO->stride[0];
-      pO->nh[2]= -pO->stride[1];
-      pO->nh[3]= pO->stride[1];
+      pO->nhStepWrap[0][0]= -pO->stride[0];
+      pO->nhStepWrap[0][1]= pO->stride[0];
+      pO->nhStepWrap[0][2]= -pO->stride[1];
+      pO->nhStepWrap[0][3]= pO->stride[1];
+
+      pO->nhStepWrap[1][0]= pO->nhStepWrap[0][0] + pO->stride[1];
+      pO->nhStepWrap[1][1]= pO->nhStepWrap[0][1] + -pO->stride[1];
+      pO->nhStepWrap[1][2]= pO->nhStepWrap[0][2] + pO->stride[2];
+      pO->nhStepWrap[1][3]= pO->nhStepWrap[0][3] + -pO->stride[2];
 // corners
       pO->cn[0]= 0 * pO->stride[0] + 0 * pO->stride[1];               // 0;
       pO->cn[1]= (pO->def.x-1) * pO->stride[0] + 0 * pO->stride[1];   // pO->stride[1] - pO->stride[0];
