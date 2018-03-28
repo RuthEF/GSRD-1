@@ -171,7 +171,11 @@ size_t compare (HostFB * const pF1, HostFB * const pF2, const ImgOrg * const pO,
    if (nTabIS > 0)
    {
       printf("tabIS[%u]:", nTabIS);
-      for (U32 k=0; k<nTabIS; k++) { printf("%zu..%zu, ", tabIS[k].s, tabIS[k].e); }
+      for (U32 k=0; k<nTabIS; k++)
+      {
+         if (tabIS[k].s == tabIS[k].e) { printf("%zu, ", tabIS[k].s); }
+         else { printf("%zu..%zu, ", tabIS[k].s, tabIS[k].e); }
+      }
       printf("\n\n");
    }
    return(sa[1].n + sa[2].n + sb[1].n + sb[2].n);
