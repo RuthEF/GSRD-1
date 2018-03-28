@@ -201,8 +201,6 @@ void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO,
       for (U32 x= 1; x < (pO->def.x-1); ++x )
       {
          const Stride offsY= pO->stride[2] - pO->stride[1];
-         //const Index i2= i1 + offsY;
-         //const Index j2= j1 + offsY;
          const Index i2= x * pO->stride[0] + offsY;
          const Index j2= i2 + pO->stride[3];
          const Scalar a2= pS[i2];
@@ -211,12 +209,8 @@ void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO,
          pR[i2]= a2 + laplace2D4S9P(pS+i2, pO->wrap.h+2, pP->kL.a) - rab2 + pP->kRA * (1 - a2);
          pR[j2]= b2 + laplace2D4S9P(pS+j2, pO->wrap.h+2, pP->kL.b) + rab2 - pP->kDB * b2;
       }
-   } // ... acc parallel
-
-#if 1
-
       // left & right
-      #pragma acc parallel loop
+      #pragma acc loop vector
       for (U32 y= 1; y < (pO->def.y-1); ++y )
       {
          Scalar a, b, rab2;
@@ -227,17 +221,22 @@ void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO,
          rab2= pP->kRR * a * b * b;
          pR[i1]= a + laplace2D4S9P(pS+i1, pO->wrap.v+0, pP->kL.a) - rab2 + pP->kRA * (1 - a);
          pR[j1]= b + laplace2D4S9P(pS+j1, pO->wrap.v+0, pP->kL.b) + rab2 - pP->kDB * b;
-
+      }
+      #pragma acc loop vector
+      for (U32 y= 1; y < (pO->def.y-1); ++y )
+      {
+         Scalar a, b, rab2;
          const Index offsX= pO->stride[1] - pO->stride[0];
-         const Index i2= i1 + offsX;
-         const Index j2= j1 + offsX;
+         const Index i2= y * pO->stride[1] + offsX;
+         const Index j2= i2 + pO->stride[3];
          a= pS[i2];
          b= pS[j2];
          rab2= pP->kRR * a * b * b;
          pR[i2]= a + laplace2D4S9P(pS+i2, pO->wrap.v+2, pP->kL.a) - rab2 + pP->kRA * (1 - a);
          pR[j2]= b + laplace2D4S9P(pS+j2, pO->wrap.v+2, pP->kL.b) + rab2 - pP->kDB * b;
       }
-#endif
+   } // ... acc parallel
+
 #if 1	// The four corners: R,L * B,T
       //pragma acc parallel
       {
