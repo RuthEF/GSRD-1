@@ -168,6 +168,9 @@ void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO,
          for (U32 x= 1; x < (pO->def.x-1); ++x )
          {
             const Index i= y * pO->stride[1] + x * pO->stride[0];
+#if 1
+            proc1(pR, pS, i, pO->stride[3], pO->nh+0, pP);
+#else
             const Index j= i + pO->stride[3];
             const Scalar a= pS[i];
             const Scalar b= pS[j];
@@ -176,6 +179,7 @@ void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO,
             //const Scalar bd= KDB0 * b;
             pR[i]= a + laplace2D2S9P(pS+i, pO->stride, pP->kL.a) - rab2 + pP->kRA * (1 - a);
             pR[j]= b + laplace2D2S9P(pS+j, pO->stride, pP->kL.b) + rab2 - pP->kDB * b;
+#endif
          }
       }
 
@@ -240,10 +244,10 @@ void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO,
 #if 1	// The four corners: R,L * B,T
       //pragma acc parallel
       {
-         proc1(pR, pS, pO->c[0], pO->stride[3], pO->wrap.c+0, pP);
-         proc1(pR, pS, pO->c[1], pO->stride[3], pO->wrap.c+2, pP);
-         proc1(pR, pS, pO->c[2], pO->stride[3], pO->wrap.d+0, pP);
-         proc1(pR, pS, pO->c[3], pO->stride[3], pO->wrap.d+2, pP);
+         proc1(pR, pS, pO->cn[0], pO->stride[3], pO->wrap.c+0, pP);
+         proc1(pR, pS, pO->cn[1], pO->stride[3], pO->wrap.c+2, pP);
+         proc1(pR, pS, pO->cn[2], pO->stride[3], pO->wrap.d+0, pP);
+         proc1(pR, pS, pO->cn[3], pO->stride[3], pO->wrap.d+2, pP);
       }
 #endif
    } // ... acc data ..

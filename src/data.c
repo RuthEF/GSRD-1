@@ -41,14 +41,19 @@ void initOrg (ImgOrg * const pO, U16 w, U16 h, U8 flags)
       pO->stride[1]= w * pO->stride[0]; // line
       pO->stride[2]= h * pO->stride[1]; // plane
       pO->n= 2 * pO->stride[2]; // complete buffer
-
-// corner indices
-      pO->c[0]= 0 * pO->stride[0] + 0 * pO->stride[1];               // 0;
-      pO->c[1]= (pO->def.x-1) * pO->stride[0] + 0 * pO->stride[1];   // pO->stride[1] - pO->stride[0];
-      pO->c[2]= 0 * pO->stride[0] + (pO->def.y-1) * pO->stride[1];   // pO->stride[2] - pO->stride[1];
-      pO->c[3]= (pO->def.x-1) * pO->stride[0] + (pO->def.y-1) * pO->stride[1]; // pO->stride[2] - pO->stride[0];
-      printf("c[4]= %d %d %d %d\n", pO->c[0], pO->c[1], pO->c[2], pO->c[3]);
+// neighbours
+      pO->nh[0]= -pO->stride[0];
+      pO->nh[1]= pO->stride[0];
+      pO->nh[2]= -pO->stride[1];
+      pO->nh[3]= pO->stride[1];
+// corners
+      pO->cn[0]= 0 * pO->stride[0] + 0 * pO->stride[1];               // 0;
+      pO->cn[1]= (pO->def.x-1) * pO->stride[0] + 0 * pO->stride[1];   // pO->stride[1] - pO->stride[0];
+      pO->cn[2]= 0 * pO->stride[0] + (pO->def.y-1) * pO->stride[1];   // pO->stride[2] - pO->stride[1];
+      pO->cn[3]= (pO->def.x-1) * pO->stride[0] + (pO->def.y-1) * pO->stride[1]; // pO->stride[2] - pO->stride[0];
+      printf("c[4]= %d %d %d %d\n", pO->cn[0], pO->cn[1], pO->cn[2], pO->cn[3]);
       printf("  ? = %d %d %d %d\n", 0, pO->stride[1] - pO->stride[0], pO->stride[2] - pO->stride[1], pO->stride[2] - pO->stride[0]);
+
       initWrap(&(pO->wrap), pO->stride);
    }
 } // initOrg

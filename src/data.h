@@ -50,7 +50,8 @@ typedef struct
    V2U32  def;
    Stride stride[4];
    size_t n;
-Index c[4];
+   Stride nh[4]; // neighbourhood 
+   Index  cn[4]; // corners
    BoundaryWrap wrap;
 } ImgOrg;
 
