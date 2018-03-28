@@ -81,6 +81,22 @@ INLINE void proc1XY (Scalar * const pR, const Scalar * const pS, const Index x, 
    proc1(pR, pS, x * pO->stride[0] + y * pO->stride[1], pO->stride[3], wrap, pP);
 } // proc1XY
 
+void procAXY (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, const BaseParamVal * pP)
+{
+   #pragma acc data present( pR[:pO->n], pS[:pO->n], pO[:1], pP[:1] )
+   {
+      #pragma acc parallel loop
+      for (U32 y= 0; y < pO->def.y; ++y )
+      {
+         #pragma acc loop vector
+         for (U32 x= 0; x < pO->def.x; ++x )
+         {
+            proc1XY(pR, pS, x, y, pO, pP);
+         }
+      }
+   }
+} // procAXY
+
 /* Parameter variation
 void procVA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP)
 {
@@ -363,8 +379,8 @@ U32 proc2IA (Scalar * restrict pTR, Scalar * restrict pSR, const ImgOrg * pO, co
    {
       for (U32 i= 0; i < nI; ++i )
       {
-         procA(pTR,pSR,pO,&(pP->base));
-         procA(pSR,pTR,pO,&(pP->base));
+         procAXY(pTR,pSR,pO,&(pP->base));
+         procAXY(pSR,pTR,pO,&(pP->base));
       }
    }
    return(2*nI);
@@ -375,11 +391,11 @@ U32 proc2I1A (Scalar * restrict pR, Scalar * restrict pS, const ImgOrg * pO, con
    #pragma acc data present_or_create( pR[:pO->n] ) present_or_copyin( pO[:1], pP[:1] ) \
                     copyin( pS[:pO->n] ) copyout( pR[:pO->n] )
    {
-      procA(pR,pS,pO,&(pP->base));
+      procAXY(pR,pS,pO,&(pP->base));
       for (U32 i= 0; i < nI; ++i )
       {
-         procA(pS,pR,pO,&(pP->base));
-         procA(pR,pS,pO,&(pP->base));
+         procAXY(pS,pR,pO,&(pP->base));
+         procAXY(pR,pS,pO,&(pP->base));
       }
    }
    return(2*nI+1);
