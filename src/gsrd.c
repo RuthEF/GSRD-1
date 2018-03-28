@@ -118,7 +118,8 @@ void summarise (HostFB * const pF, const ImgOrg * const pO)
    printNFS(pF->s.b, 2, &fmt);
 } // summarise
 
-#define MAX_TAB_IDX 32
+typedef struct { size_t s, e; } IdxSpan;
+#define MAX_TAB_IS 32
 size_t compare (HostFB * const pF1, HostFB * const pF2, const ImgOrg * const pO, const Scalar eps)
 {
    const size_t n= pO->def.x * pO->def.y; // pO->n / 2
@@ -129,8 +130,8 @@ size_t compare (HostFB * const pF1, HostFB * const pF2, const ImgOrg * const pO,
    FieldStat sa[3], sb[3];
    FSFmt fmt;
    size_t i;
-   Index tabI[MAX_TAB_IDX];
-   U32 nTabI= 0;
+   IdxSpan tabIS[MAX_TAB_IS];
+   U32 nTabIS= 0;
 
    printf("----\ncompare() - iter: %zu\t\t%zu\n", pF1->iter, pF2->iter);
 
@@ -149,7 +150,14 @@ size_t compare (HostFB * const pF1, HostFB * const pF2, const ImgOrg * const pO,
       statAdd(sb + iB, db);
       if ((iA + iB) > 0)
       {
-         if (nTabI < MAX_TAB_IDX) { tabI[nTabI++]= i; }
+         U32 k=0;
+         while (k < nTabIS)
+         {
+            if (i == (tabIS[k].s - 1)) { tabIS[k].s--; break; }
+            if (i == (tabIS[k].e + 1)) { tabIS[k].e++; break; }
+            k++;
+         }
+         if ((k >= nTabIS) && (nTabIS < MAX_TAB_IS)) { tabIS[nTabIS].s= tabIS[nTabIS].e= i; nTabIS++; }
       }
    }
    printf("\tDiff: N min max sum mean var\n");
@@ -160,10 +168,10 @@ size_t compare (HostFB * const pF1, HostFB * const pF2, const ImgOrg * const pO,
    fmt.pHdr= "\tdB: ";
    printNFS(sb, 3, &fmt);
 
-   if (nTabI > 0)
+   if (nTabIS > 0)
    {
-      printf("tabI[%u]:", nTabI);
-      for (U32 k=0; k<nTabI; k++) { printf("%u, ", tabI[k]); }
+      printf("tabIS[%u]:", nTabIS);
+      for (U32 k=0; k<nTabIS; k++) { printf("%zu..%zu, ", tabIS[k].s, tabIS[k].e); }
       printf("\n\n");
    }
    return(sa[1].n + sa[2].n + sb[1].n + sb[2].n);
