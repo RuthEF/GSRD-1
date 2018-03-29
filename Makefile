@@ -11,7 +11,7 @@ ACCFLAGS = -fast -acc=verystrict
 MAFLAGS  = $(ACCFLAGS) -ta=multicore $(OPT)
 GAFLAGS  = $(ACCFLAGS) -ta=nvidia:cc50 $(OPT)
 MGAFLAGS = $(ACCFLAGS) -ta=multicore,nvidia:cc50 $(OPT)
-RUNFLAGS = -A:A -I=2000,500 -O:raw
+RUNFLAGS = -A:A -I=1000,100 -O:raw/
 
 TARGET = gsrd
 DATAFILE = "init/gsrd00000(1024,1024,2)F64.raw"

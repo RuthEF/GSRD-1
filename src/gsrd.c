@@ -68,7 +68,7 @@ size_t saveFrame
       if (pA->dfi.outPath)
       {
          n+= snprintf(path+n, m-n, "%s", pA->dfi.outPath);
-         if ('\\' != path[n-1]) { path[n++]= '\\'; path[n]= 0; }
+         if ('/' != path[n-1]) { path[n++]= '/'; path[n]= 0; }
       }
       if (pA->dfi.outName) { n+= snprintf(path+n, m-n, "%s", pA->dfi.outName); }
       else { n+= snprintf(path+n, m-n, "%s", "gsrd"); } 
