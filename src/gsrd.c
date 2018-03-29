@@ -238,7 +238,7 @@ int main ( int argc, char* argv[] )
             if (iM > iR) { iM= iR; }
 
             deltaT();
-            gCtx.i+= proc2I1A(pFrame[(k^0x1)].pAB, pFrame[k].pAB, &(gCtx.org), &(gCtx.pv), iM>>1);
+            gCtx.i+= procNI(pFrame[(k^0x1)].pAB, pFrame[k].pAB, &(gCtx.org), &(gCtx.pv), iM);
             tE0= deltaT();
             tE1+= tE0;
             
