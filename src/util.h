@@ -35,6 +35,9 @@
 #define FALSE (0)
 #endif
 
+#define DFI_FLAG_VALIDATED (1<<0)
+
+
 typedef int Bool32;
 
 typedef signed char  I8;
@@ -70,14 +73,20 @@ typedef struct { U16 start, len; } ScanSeg;
 
 typedef struct
 {
-   const char  *initFilePath, *inPath, *outPath, *outName;
-   size_t      bytes;
+   const char  *filePath;
+   size_t      bytes, iter;
    ScanSeg     vSS;
    int         v[4], nV;
    U8          elemBits;
-   U8          remBuff;
-   char        buff[254];
+   U8          flags;
+   U8          pad[2];
 } DataFileInfo;
+
+typedef struct
+{
+   DataFileInfo   init, cmp;
+   const char     *outPath, *outName;
+} FileInfo;
 
 typedef struct
 {
@@ -86,9 +95,10 @@ typedef struct
 
 typedef struct
 {
-   DataFileInfo  dfi;
-   ProcInfo      proc;
+   FileInfo files;
+   ProcInfo proc;
 } ArgInfo;
+
 
 /***/
 

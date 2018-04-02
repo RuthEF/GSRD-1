@@ -101,8 +101,7 @@ U32 statGetRes1 (StatRes1 * const pR, const StatMom * const pS, const SMVal dof)
    return(o);
 } // statGetRes1
 
-
-int scanZ (size_t * const pZ, const char s[])
+int scanZD (size_t * const pZ, const char s[])
 {
    const char *pE=NULL;
    int n=0;
@@ -113,7 +112,18 @@ int scanZ (size_t * const pZ, const char s[])
       n= pE - s;
    }
    return(n);
-} // scanZ
+} // scanZD
+
+int scanRevZD (size_t * const pZ, const char s[], const int e)
+{
+   int i= e;
+   while ((i >= 0) && isdigit(s[i])) { --i; }
+   i+= !isdigit(s[i]);
+   //printf("scanRevZD() [%d]=%s\n", i, s+i);
+   if (i <= e) { return scanZD(pZ, s+i); }
+   //else
+   return(0);
+} // scanRevZD
 
 int scanVI (int v[], const int vMax, ScanSeg * const pSS, const char s[])
 {
@@ -151,7 +161,7 @@ U8 scanChZ (const char *s, char c)
       if (*s)
       {
          size_t z;
-         if ((scanZ(&z, s+1) > 0) && (z > 0) && (z <= 64)) { return((U8)z); }
+         if ((scanZD(&z, s+1) > 0) && (z > 0) && (z <= 64)) { return((U8)z); }
       }
    }
    return(0);
@@ -162,26 +172,27 @@ size_t scanDFI (DataFileInfo * pDFI, const char * const path)
    size_t bytes= fileSize(path);
    if (bytes > 0)
    {
-      int nCh;
-      const char *name=  stripPath(path);
-      pDFI->initFilePath=   path;
-      pDFI->remBuff= sizeof(pDFI->buff)-1;
-      pDFI->outName= NULL;
-      nCh= name - path;
-      if ((nCh > 0) && (nCh < pDFI->remBuff))
-      {
-         pDFI->inPath= pDFI->buff;
-         memcpy(pDFI->buff, path, nCh);
-         pDFI->buff[nCh++]= 0;
-         pDFI->remBuff-= nCh;
-         printf("scanDFI() - inPath=%s\n", pDFI->inPath);
-      } else { pDFI->inPath= NULL; } // "./"; }
+      const char *pCh, *name=  stripPath(path);
+      pDFI->filePath=   path;
 
       pDFI->bytes= bytes;
       pDFI->nV=    scanVI(pDFI->v, 4, &(pDFI->vSS), name);
-      const char *p= name + pDFI->vSS.start + pDFI->vSS.len;
-      pDFI->elemBits= scanChZ(p, 'f');
-      //if (0 == pDFI->elemBits) { pDFI->elemBits= 64; }
+      pCh= name + pDFI->vSS.start + pDFI->vSS.len;
+      pDFI->elemBits= scanChZ(pCh, 'F');
+      scanRevZD(&(pDFI->iter), name, pDFI->vSS.start-1);
+      if (pDFI->nV > 0)
+      {
+         size_t bits= pDFI->elemBits;
+         printf("%s -> v[%d]=(", name, pDFI->nV);
+         for (int i=0; i < pDFI->nV; i++)
+         {
+            bits*= pDFI->v[i];
+            printf("%d,", pDFI->v[i]);
+         }
+         printf(")*%u ", pDFI->elemBits);
+         if (pDFI->bytes == ((bits+7) >> 3)) { pDFI->flags|= DFI_FLAG_VALIDATED; printf("OK\n"); }
+         if (0 == (pDFI->flags & DFI_FLAG_VALIDATED)) { printf("WARNING: scanDFI() %zuBytes in file, expected %zubits\n", pDFI->bytes, bits); }
+      }
    }
    return(bytes);
 } // scanDFI
@@ -210,7 +221,7 @@ int scanArgs (ArgInfo *pAI, const char * const a[], int nA)
    while (nA-- > 0)
    {
       pCh= a[nA];
-      if ('-' != pCh[0]) { nV+= ( scanDFI(&(pAI->dfi), pCh) > 0 ); }
+      if ('-' != pCh[0]) { nV+= ( scanDFI(&(pAI->files.init), pCh) > 0 ); }
       else
       {
          char c, v=0;
@@ -219,9 +230,6 @@ int scanArgs (ArgInfo *pAI, const char * const a[], int nA)
          n+= contigCharSetN(pCh+n, 2, ":=", 2);
          switch(toupper(c))
          {
-            case 'O' : pAI->dfi.outPath= pCh+n;
-               break;
-
             case 'A' :
                v= toupper( pCh[n] );
                if ('H' == v) { pAI->proc.flags|= PROC_FLAG_ACCHOST; }
@@ -230,14 +238,21 @@ int scanArgs (ArgInfo *pAI, const char * const a[], int nA)
                if ('N' == v) { pAI->proc.flags&= ~(PROC_FLAG_ACCHOST|PROC_FLAG_ACCGPU); }
                ++nV;
                break;
-               
+
+            case 'C' : nV+= ( scanDFI(&(pAI->files.cmp), pCh+n) > 0 );
+               //printf("cmp:iter=%zu\n", pAI->files.cmp.iter);
+               break;
+
             case 'I' :
-               n+= scanZ(&(pAI->proc.maxIter), pCh+n);
+               n+= scanZD(&(pAI->proc.maxIter), pCh+n);
                n+= contigCharSetN(pCh+n, 2, ",;:", 3);
-               n+= scanZ(&(pAI->proc.subIter), pCh+n);
+               n+= scanZD(&(pAI->proc.subIter), pCh+n);
                ++nV;
                break;
           
+            case 'O' : pAI->files.outPath= pCh+n;
+               break;
+
             default : printf("scanArgs() - unknown flag -%c\n", c);
          }
       }

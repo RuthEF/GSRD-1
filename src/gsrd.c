@@ -6,7 +6,7 @@ typedef struct
    ParamVal    pv;
    HostBuffTab hbt;
    ImgOrg      org;
-   U32         i;
+   size_t      iter;
 } Context;
 
 /***/
@@ -33,7 +33,7 @@ Context *initCtx (Context * const pC, U16 w, U16 h, U16 nF)
       
       if (initHBT(&(pC->hbt), b2F, nF))
       {
-         pC->i= 0;
+         pC->iter= 0;
          return(pC);
       }
    }
@@ -50,6 +50,21 @@ void releaseCtx (Context * const pC)
    }
 } // releaseCtx
 
+size_t loadFrame 
+(
+   HostFB               * const pFB, 
+   const DataFileInfo  * const pDFI
+)
+{
+   size_t r= 0;
+   if (pFB && pFB->pAB && pDFI && (pDFI->flags & DFI_FLAG_VALIDATED))
+   {
+      r= loadBuff(pFB->pAB, pDFI->filePath, pDFI->bytes);
+      if (r > 0) { pFB->iter= pDFI->iter; }
+   }
+   return(r);
+} // loadFrame
+
 size_t saveFrame 
 (
    const HostFB * const pFB, 
@@ -65,12 +80,12 @@ size_t saveFrame
 
       //if (NULL == pAI->dfi.outPath) { pAI->dfi.outPath= pAI->dfi.inPath; }
 
-      if (pA->dfi.outPath)
+      if (pA->files.outPath)
       {
-         n+= snprintf(path+n, m-n, "%s", pA->dfi.outPath);
+         n+= snprintf(path+n, m-n, "%s", pA->files.outPath);
          if ('/' != path[n-1]) { path[n++]= '/'; path[n]= 0; }
       }
-      if (pA->dfi.outName) { n+= snprintf(path+n, m-n, "%s", pA->dfi.outName); }
+      if (pA->files.outName) { n+= snprintf(path+n, m-n, "%s", pA->files.outName); }
       else { n+= snprintf(path+n, m-n, "%s", "gsrd"); } 
 
       n+= snprintf(path+n, m-n, "%05lu(%lu,%lu,2)F64.raw", pFB->iter, pO->def.x, pO->def.y);
@@ -131,8 +146,8 @@ size_t compare (HostFB * const pF1, HostFB * const pF2, const ImgOrg * const pO,
    FieldStat sa[3], sb[3];
    FSFmt fmt;
    size_t i;
-   IdxSpan tabIS[MAX_TAB_IS];
-   U32 nTabIS= 0;
+   IdxSpan tabDiff[MAX_TAB_IS];
+   U32 nTabDiff= 0;
 
    printf("----\ncompare() - iter: %zu\t\t%zu\n", pF1->iter, pF2->iter);
 
@@ -152,13 +167,13 @@ size_t compare (HostFB * const pF1, HostFB * const pF2, const ImgOrg * const pO,
       if ((iA + iB) > 0)
       {
          U32 k=0;
-         while (k < nTabIS)
+         while (k < nTabDiff)
          {
-            if (i == (tabIS[k].s - 1)) { tabIS[k].s--; break; }
-            if (i == (tabIS[k].e + 1)) { tabIS[k].e++; break; }
+            if (i == (tabDiff[k].s - 1)) { tabDiff[k].s--; break; }
+            if (i == (tabDiff[k].e + 1)) { tabDiff[k].e++; break; }
             k++;
          }
-         if ((k >= nTabIS) && (nTabIS < MAX_TAB_IS)) { tabIS[nTabIS].s= tabIS[nTabIS].e= i; nTabIS++; }
+         if ((k >= nTabDiff) && (nTabDiff < MAX_TAB_IS)) { tabDiff[nTabDiff].s= tabDiff[nTabDiff].e= i; nTabDiff++; }
       }
    }
    printf("\tDiff: N min max sum mean var\n");
@@ -169,13 +184,13 @@ size_t compare (HostFB * const pF1, HostFB * const pF2, const ImgOrg * const pO,
    fmt.pHdr= "\tdB: ";
    printNFS(sb, 3, &fmt);
 
-   if (nTabIS > 0)
+   if (nTabDiff > 0)
    {
-      printf("tabIS[%u]:", nTabIS);
-      for (U32 k=0; k<nTabIS; k++)
+      printf("--------\n\ntabDiff[%u]:", nTabDiff);
+      for (U32 k=0; k<nTabDiff; k++)
       {
-         if (tabIS[k].s == tabIS[k].e) { printf("%zu, ", tabIS[k].s); }
-         else { printf("%zu..%zu, ", tabIS[k].s, tabIS[k].e); }
+         if (tabDiff[k].s == tabDiff[k].e) { printf("%zu, ", tabDiff[k].s); }
+         else { printf("%zu..%zu, ", tabDiff[k].s, tabDiff[k].e); }
       }
       printf("\n\n");
    }
@@ -190,75 +205,69 @@ int main ( int argc, char* argv[] )
    if (argc > 1)
    {
       n= scanArgs(&ai, (const char **)(argv+1), argc-1);
-      if (ai.dfi.nV > 0)
-      {
-         size_t bits= ai.dfi.elemBits;
-         printf("%s -> v[%d]=(", ai.dfi.initFilePath, ai.dfi.nV);
-         for (int i=0; i < ai.dfi.nV; i++)
-         {
-            bits*= ai.dfi.v[i];
-            printf("%d,", ai.dfi.v[i]);
-         }
-         printf(")*%u\n", ai.dfi.elemBits);
-         if (ai.dfi.bytes != ((bits+7) >> 3)) { printf("WARNING: %zu != %zu", ai.dfi.bytes, bits); }
-      }
       printf("proc: f=0x%zX, m=%zu, s=%zu\n", ai.proc.flags, ai.proc.maxIter, ai.proc.subIter);
    }
-
-   const DataFileInfo *pDFI= &(ai.dfi);
-   const ProcInfo *pPI= &(ai.proc);
-   if (procInitAcc(pPI->flags) && initCtx(&gCtx, pDFI->v[0], pDFI->v[1], 8))
+   const DataFileInfo * const pIF= &(ai.files.init);
+   const ProcInfo * const pPI= &(ai.proc);
+   if (procInitAcc(pPI->flags) && initCtx(&gCtx, pIF->v[0], pIF->v[1], 8))
    {
-      size_t iM, iR;
       SMVal tE0, tE1;
-      HostFB *pFrame;
+      HostFB *pFrame, *pF2=NULL;
       char t[8];
-      U8 afb=0, nIdx=0, fIdx[4], k;
+      U8 afb=0, nIdx=0, fIdx[4], k=0;
 
       do
       {
+         size_t iM= pPI->maxIter;
          tE0= tE1= 0;
-         iM= pPI->maxIter;
          if (pPI->subIter > 0) { iM= pPI->subIter; }
-         gCtx.i= 0;
          afb&= 0x3;
          pFrame= gCtx.hbt.hfb + afb;
-         if (0 == loadBuff(pFrame->pAB, pDFI->initFilePath, pDFI->bytes))  //printf("nB=%zu\n",
+         if (0 == loadFrame(pFrame, pIF))  //printf("nB=%zu\n",
          {
             initHFB(pFrame, gCtx.org.def, 32);
             saveFrame(pFrame, &(gCtx.org), &ai);
          }
-         pFrame->iter= gCtx.i;
+         gCtx.iter= pFrame->iter;
+         //k= (gCtx.iter - pFrame->iter) & 0x1;
          summarise(pFrame, &(gCtx.org));
          printf("---- %s ----\n", procGetCurrAccTxt(t, sizeof(t)-1));
          do
          {
-            k= gCtx.i & 0x1;
-            iR= pPI->maxIter - gCtx.i;
+            size_t iR= pPI->maxIter - gCtx.iter;
             if (iM > iR) { iM= iR; }
 
             deltaT();
-            gCtx.i+= procNI(pFrame[(k^0x1)].pAB, pFrame[k].pAB, &(gCtx.org), &(gCtx.pv), iM);
+            gCtx.iter+= procNI(pFrame[(k^0x1)].pAB, pFrame[k].pAB, &(gCtx.org), &(gCtx.pv), iM);
             tE0= deltaT();
             tE1+= tE0;
             
-            k= gCtx.i & 0x1;
-            pFrame[k].iter= gCtx.i;
+            k= (gCtx.iter - pFrame->iter) & 0x1;
+            pFrame[k].iter= gCtx.iter;
 
             summarise(pFrame+k, &(gCtx.org));
             printf("\ttE= %G, %G\n", tE0, tE1);
 
             saveFrame(pFrame+k, &(gCtx.org), &ai);
-         } while (gCtx.i < pPI->maxIter);
+         } while (gCtx.iter < pPI->maxIter);
          if (nIdx < 4) { fIdx[nIdx++]= afb+k; }
          afb+= 2;
-      } while (procSetNextAcc(FALSE));
+      } while (procSetNextAcc(PROC_NOWRAP));
       if (nIdx > 1)
       {
-         HostFB *pF2= gCtx.hbt.hfb+fIdx[1];
+         pF2= gCtx.hbt.hfb+fIdx[1];
          pFrame=  gCtx.hbt.hfb+fIdx[0];
          //if (pFrame->iter == pF1->iter) 
          { nErr= compare(pFrame, pF2, &(gCtx.org), 1.0/(1<<30)); }
+      }
+      if ((nIdx > 0) && (nIdx < 4))
+      {
+         fIdx[nIdx]= ( fIdx[nIdx-1] + 1 ) & 0x3;
+         if (loadFrame( gCtx.hbt.hfb+fIdx[nIdx], &(ai.files.cmp) ))
+         {
+            pF2= gCtx.hbt.hfb + fIdx[nIdx];
+            nErr= compare(pFrame, pF2, &(gCtx.org), 1.0/(1<<10));
+         }
       }
    }
    releaseCtx(&gCtx);
