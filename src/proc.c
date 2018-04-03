@@ -35,8 +35,13 @@ typedef struct
 
 typedef struct
 {
+   U32 o, n; // offset & count
+} SDC; // Sub-Domain-Copy
+
+typedef struct
+{
    U32 min, max;  // Y spans
-   U32 o, n;      // Sub-buffer offset & count
+   SDC in, out;
 } DomSubS;
 
 typedef struct
@@ -359,6 +364,45 @@ U32 proc2IADS
    return(2*nI);
 } // proc2IADS
 
+U32 proc2IT
+(
+   Scalar * restrict pTR, 
+   Scalar * restrict pSR,
+   const ImgOrg * pO,
+   const ParamVal * pP,
+   const DSMapNode aDSMN[],
+   const U32 nDSMN,
+   const U32 nI
+)
+{
+   for ( U32 i= 1; i < nI; ++i )
+   {
+      for (U32 j= 0; j < nDSMN; ++j )
+      {
+         const DomSubS * pDS= &(aDSMN[j].ds);
+         acc_set_device_num( aDSMN[j].dev.n, aDSMN[j].dev.c );
+         #pragma acc data present_or_create( pTR[pDS->o:pDS->n] ) copyin( pSR[pDS->o:pDS->n] ) copyout( pTR[pDS->o:pDS->n] ) present_or_copyin( pO[:1], pP[:1], pDS[:1] )
+         {
+            procAXYDS(pTR,pSR,pO,&(pP->base), pDS );
+         }
+      } // j
+
+      acc_wait_all();
+      
+      for (U32 j= 0; j < nDSMN; ++j )
+      {
+         const DomSubS * pDS= &(aDSMN[j].ds);
+         acc_set_device_num( aDSMN[j].dev.n, aDSMN[j].dev.c );
+         #pragma acc data present( pTR[pDS->o:pDS->n] ) copyin( pTR[pDS->o:pDS->n] ) copyout( pSR[pDS->o:pDS->n] ) present( pO[:1], pP[:1], pDS[:1] ) 
+         {
+            procAXYDS(pSR,pTR,pO,&(pP->base), pDS);
+         }
+      }
+      if (i < nI) { acc_wait_all(); }
+   }
+   return(2*nI);
+} // proc2IT
+
 
 /** EXT **/
 
@@ -503,5 +547,42 @@ U32 procNI
 )
 {
    if (nI & 1) return proc2I1A(pR, pS, pO, pP, nI>>1);
-   else return proc2IA(pR, pS, pO, pP, nI>>1);
+   else
+   {
+#if 1
+      DSMapNode aD[2];
+      int nD= 0, mD= MIN(2, gDev.nDev);
+      if (mD > 0)
+      {
+         U32 o= 0, n= pO->def.y / mD;
+         while (nD < mD)
+         {
+            aD[nD].dev= gDev.d[nD];
+            aD[nD].ds.min= o;
+            aD[nD].ds.max= o + n-1;
+
+            aD[nD].ds.in.o= o;
+            aD[nD].ds.in.n= (n + 1);
+            aD[nD].ds.out.o= o + (o > 0);
+            aD[nD].ds.out.n= n - 1;
+            o+= n+1;
+            nD++;
+         }
+         if (nD > 0)
+         {
+            mD= nD-1;
+            aD[mD].ds.out.n= pO->def.y - aD[mD].ds.out.o;
+            do
+            {
+               aD[nD].ds.in.o*= pO->stride[1];
+               aD[nD].ds.in.n*= pO->stride[1];
+               aD[nD].ds.out.o*= pO->stride[1];
+               aD[nD].ds.out.n*= pO->stride[1];
+            } while (--mD > 0);
+         }
+      }
+      if (nD > 0) return proc2IT(pR, pS, pO, pP, aD, nD, nI>>1);
+      else return proc2IA(pR, pS, pO, pP, nI>>1);
+#endif
+   }
 } // procNI
