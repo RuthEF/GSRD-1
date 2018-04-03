@@ -312,17 +312,17 @@ U32 proc2IADS
    Scalar * restrict pSR,
    const ImgOrg * pO,
    const ParamVal * pP,
-   const DSMapNode aDSN[],
-   const U32 nDSN,
+   const DSMapNode aDSMN[],
+   const U32 nDSMN,
    const U32 nI
 )
 {
    
    if (nI > 0)
    {
-      for (U32 j= 0; i < nDS; ++j )
+      for (U32 j= 0; j < nDSMN; ++j )
       {
-         const DomSubS * pDS= &(aDSN[j].ds);
+         const DomSubS * pDS= &(aDSMN[j].ds);
 #ifdef OPEN_ACC
          acc_set_device_num( aDSN[j].a.n, aDSN[j].a.c );
 #endif   
@@ -336,18 +336,18 @@ U32 proc2IADS
       {
       }
 
-      for (U32 j= 0; i < nDS; ++j )
+      for (U32 j= 0; j < nDSMN; ++j )
       {
-         const DomSubS * pDS= &(aDSN[j].ds);
+         const DomSubS * pDS= &(aDSMN[j].ds);
 #ifdef OPEN_ACC
          acc_set_device_num( aDSN[j].a.n, aDSN[j].a.c );
 #endif   
          #pragma acc data present( pTR[pDS->o:pDS->n] ) copyout( pSR[pDS->o:pDS->n] )
          { // present( pO[:1], pP[:1], pDS[:1] ) 
-            procAXYDS(pSR,pTR,pO,&(pP->base) pDS);
+            procAXYDS(pSR,pTR,pO,&(pP->base), pDS);
          }
-      } // j
-   } // i
+      }
+   }
    return(2*nI);
 } // proc2IADS
 
