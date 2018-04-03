@@ -33,6 +33,20 @@ typedef struct
    U8 pad[2];
 } AccDevTable;
 
+typedef struct
+{
+   U32 min, max;  // Y spans
+   U32 o, n;      // Sub-buffer offset & count
+} DomSubS;
+
+typedef struct
+{
+   DomSubS  ds;
+   AccDev   d;
+   U8 pad[2];
+} DSMapNode;
+
+// typedef struct { V2U32 min, max; } DomSub2D;
 
 static AccDevTable gDev={0,};
 
@@ -101,6 +115,29 @@ void procAXY (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * p
       }
    }
 } // procAXY
+
+void procAXYDS
+(
+   Scalar * restrict pR, 
+   const Scalar * restrict pS, 
+   const ImgOrg * pO, 
+   const BaseParamVal * pP,
+   const DomSubS * pDS
+)
+{
+   #pragma acc data present( pR[pDS->o:pDS->n], pS[pDS->o:pDS->n], pO[:1], pP[:1], pDS[:1] )
+   {
+      #pragma acc parallel loop
+      for (U32 y= pDS->min; y < pDS->max; ++y )
+      {
+         #pragma acc loop vector
+         for (U32 x= 0; x < pO->def.x; ++x )
+         {
+            proc1XY(pR, pS, x, y, pO, pP);
+         }
+      }
+   }
+} // procAXYDS
 
 /* Parameter variation
 void procVA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP)
@@ -233,10 +270,17 @@ void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO,
    } // ... acc data ..
 } // procA
 
-U32 proc2IA (Scalar * restrict pTR, Scalar * restrict pSR, const ImgOrg * pO, const ParamVal * pP, const U32 nI)
+U32 proc2IA
+(
+   Scalar * restrict pTR, // temp "result" (unused if acc. device has sufficient private memory)
+   Scalar * restrict pSR, // source & result buffer
+   const ImgOrg   * pO, 
+   const ParamVal * pP, 
+   const U32 nI
+)
 {
-   #pragma acc data present_or_create( pTR[:pO->n] ) present_or_copyin( pO[:1], pP[:1] ) \
-                    copy( pSR[:pO->n] )
+   #pragma acc data present_or_create( pTR[:pO->n] ) copy( pSR[:pO->n] )
+   //                 present_or_copyin( pO[:1], pP[:1] )
    {
       for (U32 i= 0; i < nI; ++i )
       {
@@ -249,8 +293,8 @@ U32 proc2IA (Scalar * restrict pTR, Scalar * restrict pSR, const ImgOrg * pO, co
 
 U32 proc2I1A (Scalar * restrict pR, Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP, const U32 nI)
 {
-   #pragma acc data present_or_create( pR[:pO->n] ) present_or_copyin( pO[:1], pP[:1] ) \
-                    copyin( pS[:pO->n] ) copyout( pR[:pO->n] )
+   #pragma acc data present_or_create( pR[:pO->n] ) copyin( pS[:pO->n] ) copyout( pR[:pO->n] )
+   //                 present_or_copyin( pO[:1], pP[:1] )
    {
       procA(pR,pS,pO,&(pP->base));
       for (U32 i= 0; i < nI; ++i )
@@ -261,6 +305,52 @@ U32 proc2I1A (Scalar * restrict pR, Scalar * restrict pS, const ImgOrg * pO, con
    }
    return(2*nI+1);
 } // proc2I1A
+
+U32 proc2IADS
+(
+   Scalar * restrict pTR, 
+   Scalar * restrict pSR,
+   const ImgOrg * pO,
+   const ParamVal * pP,
+   const DSMapNode aDSN[],
+   const U32 nDSN,
+   const U32 nI
+)
+{
+   
+   if (nI > 0)
+   {
+      for (U32 j= 0; i < nDS; ++j )
+      {
+         const DomSubS * pDS= &(aDSN[j].ds);
+#ifdef OPEN_ACC
+         acc_set_device_num( aDSN[j].a.n, aDSN[j].a.c );
+#endif   
+         #pragma acc data present_or_create( pTR[pDS->o:pDS->n] ) copyin( pSR[pDS->o:pDS->n] )
+         { // present_or_copyin( pO[:1], pP[:1], pDS[:1] )
+            procAXYDS(pTR,pSR,pO,&(pP->base), pDS );
+         }
+      } // j
+      
+      for ( U32 i= 1; i < nI; ++i )
+      {
+      }
+
+      for (U32 j= 0; i < nDS; ++j )
+      {
+         const DomSubS * pDS= &(aDSN[j].ds);
+#ifdef OPEN_ACC
+         acc_set_device_num( aDSN[j].a.n, aDSN[j].a.c );
+#endif   
+         #pragma acc data present( pTR[pDS->o:pDS->n] ) copyout( pSR[pDS->o:pDS->n] )
+         { // present( pO[:1], pP[:1], pDS[:1] ) 
+            procAXYDS(pSR,pTR,pO,&(pP->base) pDS);
+         }
+      } // j
+   } // i
+   return(2*nI);
+} // proc2IADS
+
 
 /** EXT **/
 
@@ -397,8 +487,18 @@ Bool32 procSetNextAcc (Bool32 wrap)
 } // procSetNextAcc
 
 
-U32 procNI (Scalar * restrict pR, Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP, const U32 nI)
+U32 procNI
+(
+   Scalar * restrict pR, 
+   Scalar * restrict pS, 
+   const ImgOrg * pO, 
+   const ParamVal * pP, 
+   const U32 nI
+)
 {
-   if (nI & 1) return proc2I1A(pR, pS, pO, pP, nI>>1);
-   else return proc2IA(pR, pS, pO, pP, nI>>1);
+   #pragma acc data copyin( pO[:1], pP[:1] )
+   {
+      if (nI & 1) return proc2I1A(pR, pS, pO, pP, nI>>1);
+      else return proc2IA(pR, pS, pO, pP, nI>>1);
+   }
 } // procNI
