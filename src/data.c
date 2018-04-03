@@ -1,7 +1,8 @@
-
+// data.c - Gray-Scott Reaction-Diffusion using OpenACC
+// https://github.com/DrAl-HFS/GSRD.git
+// (c) GSRD Project Contributors Feb-April 2018
 
 #include "data.h"
-
 
 /***/
 //deprecate
