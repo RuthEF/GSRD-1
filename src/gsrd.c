@@ -1,3 +1,6 @@
+// gsrd.c - Gray-Scott Reaction-Diffusion using OpenACC
+// https://github.com/DrAl-HFS/GSRD.git
+// (c) GSRD Project Contributors Feb-April 2018
 
 #include "proc.h"
 
@@ -30,7 +33,7 @@ Context *initCtx (Context * const pC, U16 w, U16 h, U16 nF)
       initParam(&(pC->pv), gKL, &(pC->org.def), 0.100, 0.005);
 
       initOrg(&(pC->org), w, h, 0);
-      
+
       if (initHBT(&(pC->hbt), b2F, nF))
       {
          pC->iter= 0;
@@ -105,7 +108,7 @@ void frameStat (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * c
 
    initNFS(s.a+0, 2, pA, 1); // KLUDGY
    initNFS(s.b+0, 2, pB, 1);
-   
+
    for (i=1; i < n; i++)
    {
       const Index j= i * pO->stride[0];
@@ -153,7 +156,7 @@ size_t compare (HostFB * const pF1, HostFB * const pF2, const ImgOrg * const pO,
 
    initNFS(sa, 3, NULL, 0);
    initNFS(sb, 3, NULL, 0);
-   
+
    for (i=1; i < n; i++)
    {
       const Index j= i * pO->stride[0];
@@ -179,7 +182,7 @@ size_t compare (HostFB * const pF1, HostFB * const pF2, const ImgOrg * const pO,
    printf("\tDiff: N min max sum mean var\n");
    fmt.pFtr= "\n"; fmt.pSep= " | <>e ";
    fmt.limPer.min= 5000; fmt.limPer.max= n; fmt.sPer= 100.0 / n;
-   fmt.pHdr= "\tdA: "; 
+   fmt.pHdr= "\tdA: ";
    printNFS(sa, 3, &fmt);
    fmt.pHdr= "\tdB: ";
    printNFS(sb, 3, &fmt);
@@ -241,7 +244,7 @@ int main ( int argc, char* argv[] )
             gCtx.iter+= procNI(pFrame[(k^0x1)].pAB, pFrame[k].pAB, &(gCtx.org), &(gCtx.pv), iM);
             tE0= deltaT();
             tE1+= tE0;
-            
+
             k= (gCtx.iter - pFrame->iter) & 0x1;
             pFrame[k].iter= gCtx.iter;
 
@@ -271,7 +274,7 @@ int main ( int argc, char* argv[] )
       }
    }
    releaseCtx(&gCtx);
- 
+
    if ( nErr != 0 ) { printf( "Test FAILED\n"); }
    else {printf( "Test PASSED\n"); }
 

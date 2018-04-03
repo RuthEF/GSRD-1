@@ -1,3 +1,6 @@
+// data.c - Gray-Scott Reaction-Diffusion using OpenACC
+// https://github.com/DrAl-HFS/GSRD.git
+// (c) GSRD Project Contributors Feb-April 2018
 
 
 #include "data.h"
@@ -14,13 +17,6 @@ static void initWrap (BoundaryWrap *pW, const Stride stride[4])
    pW->v[0]= stride[1] - stride[0]; pW->v[1]= stride[0];
    pW->v[2]= stride[1]; pW->v[3]= -stride[1];
    pW->v[4]= -stride[0]; pW->v[5]= stride[0] - stride[1];
-/*
-   pW->c[0]= stride[1] - stride[0]; pW->c[1]= stride[0];
-   pW->c[2]= stride[1]; pW->c[3]= stride[2] - stride[1];
-   pW->c[4]= -stride[0]; pW->c[5]= stride[0] - stride[1];
-   pW->d[0]= pW->c[0]; pW->d[1]= pW->c[1]; pW->d[4]= pW->c[4]; pW->d[5]= pW->c[5];
-   pW->d[2]= -pW->c[2]; pW->d[3]= -pW->c[3];
-*/
 } // initWrap
 
 void initOrg (ImgOrg * const pO, U16 w, U16 h, U8 flags)
@@ -79,7 +75,7 @@ size_t initParam (ParamVal * const pP, const Scalar kL[3], const V2U32 *pD, Scal
       Scalar *pKRR, *pKRA, *pKDB;
       Scalar kRR=KR0, kRA=KRA0, kDB=KDB0;
       Scalar dKRR=0, dKRA=0, dKDB=0;
-      
+
       pP->var.iKRR= 0; pP->var.iKRA= pP->var.iKRR + n; pP->var.iKDB= pP->var.iKRA+n;
       pKRR= pP->var.pK + pP->var.iKRR;
       pKRA= pP->var.pK + pP->var.iKRA;
@@ -110,12 +106,12 @@ Bool32 initHBT (HostBuffTab * const pT, const size_t fb, const U32 mF)
 {
    U32 nF= 0, i= 0;
    Bool32 a;
-   
+
    memset(pT, 0, sizeof(*pT));
    if (mF & 1)
-   { 
-	   pT->pC= malloc(fb / 2);
-	   nF+= (NULL != pT->pC);
+   {
+      pT->pC= malloc(fb / 2);
+      nF+= (NULL != pT->pC);
    }
    do
    {
@@ -135,7 +131,7 @@ Bool32 initHBT (HostBuffTab * const pT, const size_t fb, const U32 mF)
 void releaseHBT (HostBuffTab * const pT)
 {
    for ( int i= 0; i< HFB_MAX; ++i )
-   { 
+   {
       if (pT->hfb[i].pAB) { free(pT->hfb[i].pAB); pT->hfb[i].pAB= NULL; }
    }
    if (pT->pC) { free(pT->pC); pT->pC= NULL; }

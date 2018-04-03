@@ -1,3 +1,7 @@
+// proc.c - Gray-Scott Reaction-Diffusion using OpenACC
+// https://github.com/DrAl-HFS/GSRD.git
+// (c) GSRD Project Contributors Feb-April 2018
+
 #include "proc.h"
 
 #ifdef __PGI   // HACK
@@ -33,14 +37,7 @@ typedef struct
 static AccDevTable gDev={0,};
 
 
-/***/
-/*
-#define LAPLACE2D2S9P(pS,i,sv,k) ( (pS)[0] * k[0] + \
-   ( (pS)[ i - sv.x ] + (pS)[ i + sv.x ] + (pS)[ i - sv.y ] + (pS)[ i + sv.y ] ) * k[1] + \
-   ( (pS)[ i - sv.x - sv.y ] + (pS)[ i + sv.x - sv.y ] + (pS)[ i + sv.y - sv.x ] + (pS)[ i + sv.x + sv.y ] ) * k[2] )
-*/
-// Stride 0,1 -> +X +Y
-//#pragma acc routine
+// DEPRECATE: Stride 0,1 -> +X +Y // #pragma acc routine???
 INLINE Scalar laplace2D2S9P (const Scalar * const pS, const Stride s[2], const Scalar k[3])
 {
    return( pS[0] * k[0] +
@@ -53,8 +50,8 @@ INLINE Scalar laplace2D2S9P (const Scalar * const pS, const Stride s[2], const S
 INLINE Scalar laplace2D4S9P (const Scalar * const pS, const Stride s[4], const Scalar k[3])
 {
    return( pS[0] * k[0] +
-           (pS[ s[0] ] + pS[ s[1] ] + pS[ s[2] ] + pS[ s[3] ]) * k[1] + 
-           (pS[ s[0]+s[2] ] + pS[ s[0]+s[3] ] + pS[ s[1]+s[2] ] + pS[ s[1]+s[3] ]) * k[2] ); 
+           (pS[ s[0] ] + pS[ s[1] ] + pS[ s[2] ] + pS[ s[3] ]) * k[1] +
+           (pS[ s[0]+s[2] ] + pS[ s[0]+s[3] ] + pS[ s[1]+s[2] ] + pS[ s[1]+s[3] ]) * k[2] );
 } // laplace2D4S9P
 
 //#pragma acc routine vector
