@@ -42,7 +42,7 @@ typedef struct
 typedef struct
 {
    DomSubS  ds;
-   AccDev   d;
+   AccDev   dev;
    U8 pad[2];
 } DSMapNode;
 
@@ -52,6 +52,18 @@ static AccDevTable gDev={0,};
 
 
 /***/
+
+#ifndef OPEN_ACC
+// Dummies for non-PGI build compatibility
+#define acc_device_host 0
+#define acc_device_nvidia 0
+#define acc_device_not_host 0
+int acc_get_num_devices (int t) { return(0); }
+int acc_get_device_num (int t) { return(-1); }
+void acc_set_device_num (int n, int t) { ; }
+void acc_wait_all (void) { ; }
+#endif
+
 /*
 #define LAPLACE2D2S9P(pS,i,sv,k) ( (pS)[0] * k[0] + \
    ( (pS)[ i - sv.x ] + (pS)[ i + sv.x ] + (pS)[ i - sv.y ] + (pS)[ i + sv.y ] ) * k[1] + \
@@ -323,15 +335,13 @@ U32 proc2IADS
       for (U32 j= 0; j < nDSMN; ++j )
       {
          const DomSubS * pDS= &(aDSMN[j].ds);
-#ifdef OPEN_ACC
-         acc_set_device_num( aDSN[j].a.n, aDSN[j].a.c );
-#endif   
+         acc_set_device_num( aDSMN[j].dev.n, aDSMN[j].dev.c );
          #pragma acc data present_or_create( pTR[pDS->o:pDS->n] ) copyin( pSR[pDS->o:pDS->n] )
          { // present_or_copyin( pO[:1], pP[:1], pDS[:1] )
             procAXYDS(pTR,pSR,pO,&(pP->base), pDS );
          }
       } // j
-      
+      acc_wait_all();
       for ( U32 i= 1; i < nI; ++i )
       {
       }
@@ -339,9 +349,7 @@ U32 proc2IADS
       for (U32 j= 0; j < nDSMN; ++j )
       {
          const DomSubS * pDS= &(aDSMN[j].ds);
-#ifdef OPEN_ACC
-         acc_set_device_num( aDSN[j].a.n, aDSN[j].a.c );
-#endif   
+         acc_set_device_num( aDSMN[j].dev.n, aDSMN[j].dev.c );
          #pragma acc data present( pTR[pDS->o:pDS->n] ) copyout( pSR[pDS->o:pDS->n] )
          { // present( pO[:1], pP[:1], pDS[:1] ) 
             procAXYDS(pSR,pTR,pO,&(pP->base), pDS);
@@ -393,7 +401,6 @@ extern void acc_free(void*); */
 Bool32 procInitAcc (size_t f) // arg param ?
 {
    int nInit= (0 == (f & (PROC_FLAG_ACCGPU|PROC_FLAG_ACCHOST)));
-#ifdef OPEN_ACC
    int nNV= acc_get_num_devices( acc_device_nvidia );
    int nH= acc_get_num_devices( acc_device_host );
    int nNH= acc_get_num_devices( acc_device_not_host );
@@ -448,7 +455,6 @@ Bool32 procInitAcc (size_t f) // arg param ?
       gDev.iCurr= 0;
       acc_set_device_num( gDev.d[0].n, gDev.d[0].c );
    }
-#endif // OPEN_ACC
    return(nInit > 0);
 } // procInitAcc
 
