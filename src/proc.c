@@ -291,8 +291,8 @@ U32 proc2IA
    const U32 nI
 )
 {
-   #pragma acc data present_or_create( pTR[:pO->n] ) copy( pSR[:pO->n] )
-   //                 present_or_copyin( pO[:1], pP[:1] )
+   #pragma acc data present_or_create( pTR[:pO->n] ) copy( pSR[:pO->n] ) \
+                    present_or_copyin( pO[:1], pP[:1] )
    {
       for (U32 i= 0; i < nI; ++i )
       {
@@ -305,8 +305,8 @@ U32 proc2IA
 
 U32 proc2I1A (Scalar * restrict pR, Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP, const U32 nI)
 {
-   #pragma acc data present_or_create( pR[:pO->n] ) copyin( pS[:pO->n] ) copyout( pR[:pO->n] )
-   //                 present_or_copyin( pO[:1], pP[:1] )
+   #pragma acc data present_or_create( pR[:pO->n] ) copyin( pS[:pO->n] ) copyout( pR[:pO->n] ) \
+                    present_or_copyin( pO[:1], pP[:1] )
    {
       procA(pR,pS,pO,&(pP->base));
       for (U32 i= 0; i < nI; ++i )
@@ -502,9 +502,6 @@ U32 procNI
    const U32 nI
 )
 {
-   #pragma acc data copyin( pO[:1], pP[:1] )
-   {
-      if (nI & 1) return proc2I1A(pR, pS, pO, pP, nI>>1);
-      else return proc2IA(pR, pS, pO, pP, nI>>1);
-   }
+   if (nI & 1) return proc2I1A(pR, pS, pO, pP, nI>>1);
+   else return proc2IA(pR, pS, pO, pP, nI>>1);
 } // procNI
