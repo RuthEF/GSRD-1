@@ -4,13 +4,13 @@
 CC       = pgcc
 CCFLAGS  = -c11 -Minfo=all
 
-# PGI Acceleration options
-ACCFLAGS = -fast -acc=verystrict -ta=multicore,nvidia
-#ACCFLAGS = -O4 -Mautoinline -acc=verystrict
+# PGI Acceleration options - NB: Build for GTX1080 requires "cc60" to launch on GPU...
+ACCFLAGS = -fast -acc=verystrict -ta=multicore,tesla:cc60
+# Whereas INKCAP (GTX970M - "cc50") works with default...
+#ACCFLAGS = -fast -acc=verystrict -ta=multicore,tesla
+#FAST = -O4 -Mautoinline -acc=verystrict
 #OPT = -ta=tesla:managed #ERR: malloc: call to cuMemAllocManaged returned error 3: Not initialized
-#MAFLAGS  = $(ACCFLAGS) -ta=multicore $(OPT)
-#GAFLAGS  = $(ACCFLAGS) -ta=nvidia:cc50 $(OPT)
-#MGAFLAGS = $(ACCFLAGS) -ta=multicore,nvidia:cc50 $(OPT)
+
 TARGET = gsrd
 RUNOPT = -A:A
 RUNFLAGS = -I=100,100 -O:raw/
