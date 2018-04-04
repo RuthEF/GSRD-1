@@ -143,12 +143,12 @@ void procAXYDS
    const DomSubS * pDS
 )
 {
-   #pragma acc data present( pR[pDS->o:pDS->n], pS[pDS->o:pDS->n], pO[:1], pP[:1], pDS[:1] )
+   #pragma acc data present( pR[pDS->in.o:pDS->in.n], pS[pDS->in.o:pDS->in.n], pO[:1], pP[:1], pDS[:1] )
    {
       #pragma acc parallel loop
       for (U32 i= 0; i < 2; ++i )
       {
-         #pragma acc parallel loop
+         //pragma acc parallel loop
          for (U32 y= pDS->mm[i].min; y <= pDS->mm[i].max; ++y )
          {
             #pragma acc loop vector
@@ -346,7 +346,7 @@ U32 proc2IADS
       {
          const DomSubS * pDS= &(aDSMN[j].ds);
          acc_set_device_num( aDSMN[j].dev.n, aDSMN[j].dev.c );
-         #pragma acc data present_or_create( pTR[pDS->o:pDS->n] ) copyin( pSR[pDS->o:pDS->n] )
+         #pragma acc data present_or_create( pTR[pDS->in.o:pDS->in.n] ) copyin( pSR[pDS->in.o:pDS->in.n] )
          { // present_or_copyin( pO[:1], pP[:1], pDS[:1] )
             procAXYDS(pTR,pSR,pO,&(pP->base), pDS );
          }
@@ -360,7 +360,7 @@ U32 proc2IADS
       {
          const DomSubS * pDS= &(aDSMN[j].ds);
          acc_set_device_num( aDSMN[j].dev.n, aDSMN[j].dev.c );
-         #pragma acc data present( pTR[pDS->o:pDS->n] ) copyout( pSR[pDS->o:pDS->n] )
+         #pragma acc data present( pTR[pDS->in.o:pDS->in.n] ) copyout( pSR[pDS->out.o:pDS->out.n] )
          { // present( pO[:1], pP[:1], pDS[:1] ) 
             procAXYDS(pSR,pTR,pO,&(pP->base), pDS);
          }
