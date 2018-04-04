@@ -67,6 +67,7 @@ typedef struct
 
 typedef struct { U16 x, y; } V2U16;
 typedef struct { U32 x, y; } V2U32;
+typedef struct { U32 min, max; } MinMaxU32;
 typedef struct { size_t min, max; } MinMaxZU;
 
 typedef struct { U16 start, len; } ScanSeg;
