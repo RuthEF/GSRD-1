@@ -611,31 +611,24 @@ U32 procNI
             pD[1].upd= pD[1].out= pD[1].in;
            nD++;
          }
-         //dump
-         for (int i=0; i<nD; i++)
+         
+         for (int j=0; j<nD; j++)
          {
-            pD= aD[i].d;
+            for ( int i= 0; i<2; ++i )
+            {
+               aD[j].d[i].in.o*=  pO->stride[1];
+               aD[j].d[i].in.n*=  pO->stride[1];
+               aD[j].d[i].out.o*= pO->stride[1];
+               aD[j].d[i].out.n*= pO->stride[1];
+               aD[j].d[i].upd.o*= pO->stride[1];
+               aD[j].d[i].upd.n*= pO->stride[1];
+            }
+            pD= aD[j].d; //dump
             printf("[%u] %u:%u\n", i, aD[i].dev.c, aD[i].dev.n);
             printf("   mm \t%u,%u; %u,%u\n", pD[0].mm.min, pD[0].mm.max, pD[1].mm.min, pD[1].mm.max);
             printf("   in \t%u,%u; %u,%u\n", pD[0].in.o, pD[0].in.n, pD[1].in.o, pD[1].in.n);
             printf("   out\t%u,%u; %u,%u\n", pD[0].out.o, pD[0].out.n, pD[1].out.o, pD[1].out.n);
             printf("   upd\t%u,%u; %u,%u\n", pD[0].upd.o, pD[0].out.n, pD[1].out.o, pD[1].out.n);
-         }
-         if (nD > 0)
-         {
-            mD= nD-1;
-            do
-            {
-               for ( int i= 0; i<2; ++i )
-               {
-                  aD[mD].d[i].in.o*=  pO->stride[1];
-                  aD[mD].d[i].in.n*=  pO->stride[1];
-                  aD[mD].d[i].out.o*= pO->stride[1];
-                  aD[mD].d[i].out.n*= pO->stride[1];
-                  aD[mD].d[i].upd.o*= pO->stride[1];
-                  aD[mD].d[i].upd.n*= pO->stride[1];
-               }
-            } while (--mD > 0);
          }
          if (nD > 0) return proc2IT(pR, pS, pO, pP, aD, nD, nI>>1);
       }
