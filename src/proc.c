@@ -145,7 +145,7 @@ void procAXYDS
 {
    #pragma acc data present( pR[d[0].in.o:d[0].in.n], pS[d[0].in.o:d[0].in.n] ) \
                     present( pR[d[1].in.o:d[1].in.n], pS[d[1].in.o:d[1].in.n] ) \
-                    present( pO[:1], pP[:1], pDS[:1] )
+                    present( pO[:1], pP[:1], d[:2] )
    {
       #pragma acc parallel loop
       for (U32 i= 0; i < 2; ++i )
