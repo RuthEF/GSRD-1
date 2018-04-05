@@ -623,8 +623,8 @@ U32 procNI
                aD[j].d[i].upd.o*= pO->stride[1];
                aD[j].d[i].upd.n*= pO->stride[1];
             }
-            pD= aD[j].d; //dump
-            printf("[%u] %u:%u\n", i, aD[i].dev.c, aD[i].dev.n);
+            
+            printf("[%u] %u:%u\n", i, aD[j].dev.c, aD[j].dev.n); pD= aD[j].d; // dump
             printf("   mm \t%u,%u; %u,%u\n", pD[0].mm.min, pD[0].mm.max, pD[1].mm.min, pD[1].mm.max);
             printf("   in \t%u,%u; %u,%u\n", pD[0].in.o, pD[0].in.n, pD[1].in.o, pD[1].in.n);
             printf("   out\t%u,%u; %u,%u\n", pD[0].out.o, pD[0].out.n, pD[1].out.o, pD[1].out.n);
