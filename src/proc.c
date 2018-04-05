@@ -574,18 +574,18 @@ U32 procNI
             U32 se= 7;
             aD[nD].dev= gDev.d[gDev.iHost];
             pD= aD[nD].d;
-            pD[0].mm.min= 0;
-            pD[0].mm.max= se - 1;
 
-            pD[0].in.o= 0;
-            pD[0].in.n= 2 + pD[0].mm.max - pD[0].mm.min;
-            pD[0].upd= pD[0].out= pD[0].in;
-
-            pD[1].mm.min= pO->def.y - se;
-            pD[1].mm.max= pO->def.y - 1;
-            pD[1].in.o= pD[1].mm.min - 1;
-            pD[1].in.n= 2 + pD[1].mm.max - pD[1].mm.min;
-            pD[1].upd= pD[1].out= pD[1].in;
+            pD->mm.min= 0;
+            pD->mm.max= se - 1;
+            pD->in.o= 0;
+            pD->in.n= 2 + pD->mm.max - pD->mm.min;
+            pD->upd= pD->out= pD->in;
+            pD++;
+            pD->mm.min= pO->def.y - se;
+            pD->mm.max= pO->def.y - 1;
+            pD->in.o= pD->mm.min - 1;
+            pD->in.n= 2 + pD->mm.max - pD->mm.min;
+            pD->upd= pD->out= pD->in;
             nD++;
             o+= se;
             n-= 2 * se;
