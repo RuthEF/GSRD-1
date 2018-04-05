@@ -106,10 +106,10 @@ void frameStat (BlockStat * const pS, const Scalar * const pAB, const ImgOrg * c
    BlockStat s;
    size_t i;
 
-   initNFS(s.a+0, 2, pA, 1); // KLUDGY
-   initNFS(s.b+0, 2, pB, 1);
+   initNFS(s.a+0, 2, NULL, 1); // KLUDGY
+   initNFS(s.b+0, 2, NULL, 1);
    
-   for (i=1; i < n; i++)
+   for (i=0; i < n; i++)
    {
       const Index j= i * pO->stride[0];
       const Scalar a= pA[j];

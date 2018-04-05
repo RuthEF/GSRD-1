@@ -183,7 +183,7 @@ void initNFS (FieldStat fs[], const U32 nFS, const Scalar * const pS, const U32 
          ++i;
       }
    }
-   while (i < nFS)
+   else while (i < nFS)
    {
       fs[i].min= M_INF;
       fs[i].max= -M_INF;
