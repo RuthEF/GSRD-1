@@ -41,13 +41,13 @@ typedef struct
 
 typedef struct
 {
-   MinMaxU32 mm[2];  // Y spans
-   SDC in[2], out[2];
-} DomSubS;
+   MinMaxU32 mm;  // Y spans
+   SDC in, out, upd;
+} DomSub;
 
 typedef struct
 {
-   DomSubS  ds;
+   DomSub  d[2];
    AccDev   dev;
    U8 pad[2];
 } DSMapNode;
@@ -140,16 +140,18 @@ void procAXYDS
    const Scalar * restrict pS, 
    const ImgOrg * pO, 
    const BaseParamVal * pP,
-   const DomSubS * pDS
+   const DomSub d[2]
 )
 {
-   #pragma acc data present( pR[pDS->in.o:pDS->in.n], pS[pDS->in.o:pDS->in.n], pO[:1], pP[:1], pDS[:1] )
+   #pragma acc data present( pR[d[0].in.o:d[0].in.n], pS[d[0].in.o:d[0].in.n] ) \
+                    present( pR[d[1].in.o:d[1].in.n], pS[d[1].in.o:d[1].in.n] ) \
+                    present( pO[:1], pP[:1], pDS[:1] )
    {
       #pragma acc parallel loop
       for (U32 i= 0; i < 2; ++i )
       {
          //pragma acc parallel loop
-         for (U32 y= pDS->mm[i].min; y <= pDS->mm[i].max; ++y )
+         for (U32 y= d[i].mm.min; y <= d[i].mm.max; ++y )
          {
             #pragma acc loop vector
             for (U32 x= 0; x < pO->def.x; ++x )
@@ -344,7 +346,7 @@ U32 proc2IADS
    {
       for (U32 j= 0; j < nDSMN; ++j )
       {
-         const DomSubS * pDS= &(aDSMN[j].ds);
+         const DomSub * pDS= aDSMN[j].d;
          acc_set_device_num( aDSMN[j].dev.n, aDSMN[j].dev.c );
          #pragma acc data present_or_create( pTR[pDS->in.o:pDS->in.n] ) copyin( pSR[pDS->in.o:pDS->in.n] )
          { // present_or_copyin( pO[:1], pP[:1], pDS[:1] )
@@ -358,7 +360,7 @@ U32 proc2IADS
 
       for (U32 j= 0; j < nDSMN; ++j )
       {
-         const DomSubS * pDS= &(aDSMN[j].ds);
+         const DomSub * pDS= aDSMN[j].d;
          acc_set_device_num( aDSMN[j].dev.n, aDSMN[j].dev.c );
          #pragma acc data present( pTR[pDS->in.o:pDS->in.n] ) copyout( pSR[pDS->out.o:pDS->out.n] )
          { // present( pO[:1], pP[:1], pDS[:1] ) 
@@ -384,11 +386,14 @@ U32 proc2IT
    {
       for (U32 j= 0; j < nDSMN; ++j )
       {
-         const DomSubS * pDS= &(aDSMN[j].ds);
+         const DomSub * pD= aDSMN[j].d;
          acc_set_device_num( aDSMN[j].dev.n, aDSMN[j].dev.c );
-         #pragma acc data present_or_create( pTR[pDS->in.o:pDS->in.n] ) copyin( pSR[pDS->in.o:pDS->in.n] ) copyout( pTR[pDS->out.o:pDS->out.n] ) present_or_copyin( pO[:1], pP[:1], pDS[:1] )
+         #pragma acc data present_or_create( pTR[ pD[0].in.o:pD[0].in.n ], pTR[ pD[1].in.o:pD[1].in.n ] ) \
+                     copyin( pSR[ pD[0].in.o:pD[0].in.n ], pSR[ pD[1].in.o:pD[1].in.n ] ) \
+                     copyout( pTR[ pD[0].out.o:pD[0].out.n ], pTR[ pD[1].out.o:pD[1].out.n ] ) \
+                     present_or_copyin( pO[:1], pP[:1], pD[:2] )
          {
-            procAXYDS(pTR,pSR,pO,&(pP->base), pDS );
+            procAXYDS(pTR, pSR, pO, &(pP->base), pD);
          }
       } // j
 
@@ -396,11 +401,13 @@ U32 proc2IT
       
       for (U32 j= 0; j < nDSMN; ++j )
       {
-         const DomSubS * pDS= &(aDSMN[j].ds);
+         const DomSub * pD= aDSMN[j].d;
          acc_set_device_num( aDSMN[j].dev.n, aDSMN[j].dev.c ); // present( pSR[pDS->in.o:pDS->in.n], pTR[pDS->in.o:pDS->in.n] ) 
-         #pragma acc data copyin( pTR[pDS->in.o:pDS->in.n] ) copyout( pSR[pDS->out.o:pDS->out.n] ) present( pO[:1], pP[:1], pDS[:1] ) 
+         #pragma acc data copyin( pTR[ pD[0].in.o:pD[0].in.n ], pTR[ pD[1].in.o:pD[1].in.n ] ) \
+                     copyout( pSR[ pD[0].in.o:pD[0].in.n ], pSR[ pD[1].in.o:pD[1].in.n ] ) \
+                     present( pO[:1], pP[:1], pD[:2] )
          {
-            procAXYDS(pSR,pTR,pO,&(pP->base), pDS);
+            procAXYDS(pSR, pTR, pO, &(pP->base), pD);
          }
       }
       if (i < nI) { acc_wait_all(); }
@@ -556,8 +563,8 @@ U32 procNI
    if (nI & 1) return proc2I1A(pR, pS, pO, pP, nI>>1);
    else
    {
-      DSMapNode aD[3], *pD;
-      DomSubS *pDS;
+      DSMapNode aD[3];
+      DomSub *pD;
       int nD= 0, mD= MIN(2, gDev.nDev);
       if (mD > 1)
       {
@@ -565,59 +572,62 @@ U32 procNI
          if (gDev.iHost < gDev.nDev)
          {
             U32 se= 7;
-            pD= aD;
-            pD->dev= gDev.d[gDev.iHost];
-            pDS= &(pD->ds);
-            pDS->mm[0].min= 0;
-            pDS->mm[0].max= se - 1;
-            pDS->mm[1].min= pO->def.y - se - 1;
-            pDS->mm[1].max= pO->def.y - 1;
-            pDS->in[0].o= 0;
-            pDS->in[0].n= 2 + pDS->mm[0].max - pDS->mm[0].min;
-            pDS->in[1].o= pDS->mm[1].min - 1;
-            pDS->in[1].n= 2 + pDS->mm[1].max - pDS->mm[1].min;
+            aD[nD].dev= gDev.d[gDev.iHost];
+            pD= aD[nD].d;
+            pD[0].mm.min= 0;
+            pD[0].mm.max= se - 1;
+            pD[1].mm.min= pO->def.y - se - 1;
+            pD[1].mm.max= pO->def.y - 1;
+            pD[0].in.o= 0;
+            pD[0].in.n= 2 + pD[0].mm.max - pD[0].mm.min;
+            pD[1].in.o= pD[1].mm.min - 1;
+            pD[1].in.n= 2 + pD[1].mm.max - pD[1].mm.min;
             nD++;
             o+= se;
             n-= 2 * se;
          }
          if (nD < mD)
          {
-            pD= aD+nD;
-            pD->dev= gDev.d[nD]; // HACK!
-            pDS= &(pD->ds);
+            U32 iNH= 0;
+            iNH+= (0 == gDev.iHost);
+ 
+            aD[nD].dev= gDev.d[iNH];
+            pD= aD[nD].d;
 
-            pDS->mm[0].min= o;
-            pDS->mm[0].max= pDS->mm[0].min + (n / 2) - 1;
-            pDS->mm[1].min= pDS->mm[0].max + 1;
-            pDS->mm[1].max= pDS->mm[1].min + n - (n / 2) - 1;
-            pDS->in[0].o= 0;
-            pDS->in[0].n= 2 + pDS->mm[0].max - pDS->mm[0].min;
-            pDS->in[1].o= pDS->mm[1].min - 1;
-            pDS->in[1].n= 2 + pDS->mm[1].max - pDS->mm[1].min;
+            pD[0].mm.min= o;
+            pD[0].mm.max= pD[0].mm.min + (n / 2) - 1;
+            pD[1].mm.min= pD[0].mm.max + 1;
+            pD[1].mm.max= pD[1].mm.min + n - (n / 2) - 1;
+            pD[0].in.o= 0;
+            pD[0].in.n= 2 + pD[0].mm.max - pD[0].mm.min;
+            pD[1].in.o= pD[1].mm.min - 1;
+            pD[1].in.n= 2 + pD[1].mm.max - pD[1].mm.min;
             nD++;
          }
          //dump
          for (int i=0; i<nD; i++)
          {
-            pDS= &(aD[i].ds);
+            pD= aD[i].d;
             printf("[%u] %u:%u\n", i, aD[i].dev.c, aD[i].dev.n);
-            printf("   mm \t%u,%u; %u,%u\n", pDS->mm[0].min, pDS->mm[0].max, pDS->mm[1].min, pDS->mm[1].max);
-            printf("   in \t%u,%u; %u,%u\n", pDS->in[0].o, pDS->in[0].n, pDS->in[1].o, pDS->in[1].n);
-            printf("   out\t%u,%u; %u,%u\n", pDS->out[0].o, pDS->out[0].n, pDS->out[1].o, pDS->out[1].n);
+            printf("   mm \t%u,%u; %u,%u\n", pD[0].mm.min, pD[0].mm.max, pD[1].mm.min, pD[1].mm.max);
+            printf("   in \t%u,%u; %u,%u\n", pD[0].in.o, pD[0].in.n, pD[1].in.o, pD[1].in.n);
+            printf("   out\t%u,%u; %u,%u\n", pD[0].out.o, pD[0].out.n, pD[1].out.o, pD[1].out.n);
+            printf("   upd\t%u,%u; %u,%u\n", pD[0].upd.o, pD[0].out.n, pD[1].out.o, pD[1].out.n);
          }
          if (nD > 0)
          {
             mD= nD-1;
             do
             {
-               aD[mD].ds.in[0].o*=  pO->stride[1];
-               aD[mD].ds.in[0].n*=  pO->stride[1];
-               aD[mD].ds.in[1].o*=  pO->stride[1];
-               aD[mD].ds.in[1].n*=  pO->stride[1];
-               aD[mD].ds.out[0].o*= pO->stride[1];
-               aD[mD].ds.out[0].n*= pO->stride[1];
-               aD[mD].ds.out[1].o*= pO->stride[1];
-               aD[mD].ds.out[1].n*= pO->stride[1];
+               for ( int i= 0; i<2; ++i )
+               {
+                  aD[mD].d[i].in.o*=  pO->stride[1];
+                  aD[mD].d[i].in.n*=  pO->stride[1];
+                  aD[mD].d[i].out.o*= pO->stride[1];
+                  aD[mD].d[i].out.n*= pO->stride[1];
+                  aD[mD].d[i].upd.o*= pO->stride[1];
+                  aD[mD].d[i].upd.n*= pO->stride[1];
+               }
             } while (--mD > 0);
          }
          if (nD > 0) return proc2IT(pR, pS, pO, pP, aD, nD, nI>>1);
