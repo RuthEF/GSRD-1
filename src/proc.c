@@ -167,7 +167,7 @@ U32 proc2IA
       }
    }
    return(2*nI);
-} // proc2I1A
+} // proc2IA
 
 U32 proc2I1A (Scalar * restrict pR, Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP, const U32 nI)
 {
@@ -214,8 +214,7 @@ INLINE void procAXYDS
    const DomSub d[2]
 )
 {
-//present( pR[d[1].in.o:d[1].in.n], pS[d[1].in.o:d[1].in.n] ) \
-//present( pR[d[0].in.o:d[0].in.n], pS[d[0].in.o:d[0].in.n] ) \
+//present( pR[d[0].in.o:d[0].in.n], pS[d[0].in.o:d[0].in.n], pR[d[1].in.o:d[1].in.n], pS[d[1].in.o:d[1].in.n] ) 
    #pragma acc data present( pR[:pO->n], pS[:pO->n], pO[:1], pP[:1], d[:2] )
    {
       #pragma acc parallel loop
