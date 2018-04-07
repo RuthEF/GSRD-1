@@ -184,7 +184,6 @@ U32 proc2I1A (Scalar * restrict pR, Scalar * restrict pS, const ImgOrg * pO, con
    return(2*nI+1);
 } // proc2I1A
 
-/*** multi-device testing ***/
 
 // Simple brute force implementation (every site boundary checked)
 void procAXY (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, const BaseParamVal * pP)
@@ -203,7 +202,10 @@ void procAXY (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * p
    }
 } // procAXY
 
-void procAXYDS
+
+/*** multi-device testing ***/
+
+INLINE void procAXYDS
 (
    Scalar * restrict pR, 
    const Scalar * restrict pS, 
@@ -212,9 +214,9 @@ void procAXYDS
    const DomSub d[2]
 )
 {
-   #pragma acc data present( pR[d[0].in.o:d[0].in.n], pS[d[0].in.o:d[0].in.n] ) \
-                    present( pR[d[1].in.o:d[1].in.n], pS[d[1].in.o:d[1].in.n] ) \
-                    present( pO[:1], pP[:1], d[:2] )
+//present( pR[d[1].in.o:d[1].in.n], pS[d[1].in.o:d[1].in.n] ) \
+//present( pR[d[0].in.o:d[0].in.n], pS[d[0].in.o:d[0].in.n] ) \
+   #pragma acc data present( pR[:pO->n], pS[:pO->n], pO[:1], pP[:1], d[:2] )
    {
       #pragma acc parallel loop
       for (U32 i= 0; i < 2; ++i )
@@ -259,14 +261,18 @@ U32 proc2IT
          const size_t o1b= i1a + pO->stride[2];
 
          acc_set_device_num( aDSMN[j].dev.n, aDSMN[j].dev.c );
-         #pragma acc data present_or_create( pTR[ i0a:i0n ], pTR[ i1a:i1n ], pTR[ i0b:i0n ], pTR[ i1b:i1n ] ) \
+         /*pragma acc data present_or_create( pTR[ i0a:i0n ], pTR[ i1a:i1n ], pTR[ i0b:i0n ], pTR[ i1b:i1n ] ) \
                      copyin( pSR[ i0a:i0n ], pSR[ i1a:i1n ], pSR[ i0b:i0n ], pSR[ i1b:i1n ] ) \
                      copyout( pTR[ o0a:o0n ], pTR[ o1a:o1n ], pTR[ o0b:o0n ], pTR[ o1b:o1n ] ) \
-                     present_or_copyin( pO[:1], pP[:1], pD[:2] )
+                     copyin( pO[:1], pP[:1], pD[:2] )
+	*/
+         #pragma acc data present_or_create( pTR[:pO->n] ) copy( pSR[:pO->n] ) present_or_copyin( pO[:1], pP[:1], pD[:2] )
          {
             procAXYDS(pTR, pSR, pO, &(pP->base), pD);
          }
       } // j
+
+	printf("proc2IT(1)\n");
 
       acc_wait_all();
       
