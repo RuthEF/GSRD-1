@@ -70,19 +70,6 @@ void acc_set_device_num (int n, int t) { ; }
 void acc_wait_all (void) { ; }
 #endif
 
-/*
-#define LAPLACE2D2S9P(pS,i,sv,k) ( (pS)[0] * k[0] + \
-   ( (pS)[ i - sv.x ] + (pS)[ i + sv.x ] + (pS)[ i - sv.y ] + (pS)[ i + sv.y ] ) * k[1] + \
-   ( (pS)[ i - sv.x - sv.y ] + (pS)[ i + sv.x - sv.y ] + (pS)[ i + sv.y - sv.x ] + (pS)[ i + sv.x + sv.y ] ) * k[2] )
-*/
-// Stride 0,1 -> +X +Y
-//#pragma acc routine
-INLINE Scalar laplace2D2S9P (const Scalar * const pS, const Stride s[2], const Scalar k[3])
-{
-   return( pS[0] * k[0] +
-          (pS[-s[0]] + pS[s[0]] + pS[-s[1]] + pS[s[1]]) * k[1] +
-          (pS[-s[1]-s[0]] + pS[-s[1]+s[0]] + pS[s[1]-s[0]] + pS[s[1]+s[0]]) * k[2] );
-} // laplace2D2S9P
 
 // Stride 0..3 -> +-X +-Y
 //#pragma acc routine vector
@@ -117,139 +104,6 @@ INLINE void proc1XY (Scalar * const pR, const Scalar * const pS, const Index x, 
    proc1(pR, pS, x * pO->stride[0] + y * pO->stride[1], pO->stride[3], wrap, pP);
 } // proc1XY
 
-// Simple brute force implementation (every site boundary checked)
-void procAXY (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, const BaseParamVal * pP)
-{
-   #pragma acc data present( pR[:pO->n], pS[:pO->n], pO[:1], pP[:1] )
-   {
-      #pragma acc parallel loop
-      for (U32 y= 0; y < pO->def.y; ++y )
-      {
-         #pragma acc loop vector
-         for (U32 x= 0; x < pO->def.x; ++x )
-         {
-            proc1XY(pR, pS, x, y, pO, pP);
-         }
-      }
-   }
-} // procAXY
-
-void procAXYDS
-(
-   Scalar * restrict pR, 
-   const Scalar * restrict pS, 
-   const ImgOrg * pO, 
-   const BaseParamVal * pP,
-   const DomSub d[2]
-)
-{
-   #pragma acc data present( pR[d[0].in.o:d[0].in.n], pS[d[0].in.o:d[0].in.n] ) \
-                    present( pR[d[1].in.o:d[1].in.n], pS[d[1].in.o:d[1].in.n] ) \
-                    present( pO[:1], pP[:1], d[:2] )
-   {
-      #pragma acc parallel loop
-      for (U32 i= 0; i < 2; ++i )
-      {
-         //pragma acc parallel loop
-         for (U32 y= d[i].mm.min; y <= d[i].mm.max; ++y )
-         {
-            #pragma acc loop vector
-            for (U32 x= 0; x < pO->def.x; ++x )
-            {
-               proc1XY(pR, pS, x, y, pO, pP);
-            }
-         }
-      }
-   }
-} // procAXYDS
-
-/* Parameter variation
-void procVA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP)
-{
-   #pragma acc data present( pR[:pO->n], pS[:pO->n], pO[:1], pP[:1], pP->pKRR[:pP->n], pP->pKRA[:pP->n], pP->pKDB[:pP->n] )
-   {
-      #pragma acc parallel loop
-      for (U32 y= 1; y < (pO->def.y-1); ++y )
-      {
-         #pragma acc loop vector
-         for (U32 x= 1; x < (pO->def.x-1); ++x )
-         {
-            const Index i= y * pO->stride[1] + x * pO->stride[0];
-            const Index j= i + pO->stride[3];
-            const Scalar a= pS[i];
-            const Scalar b= pS[j];
-            const Scalar rab2= pP->pKRR[x] * a * b * b;
-            //const Scalar ar= KRA0 * (1 - a);
-            //const Scalar bd= KDB0 * b;
-            pR[i]= a + laplace2D2S9P(pS+i, pO->stride, pP->kL.a) - rab2 + pP->pKRA[x] * (1 - a);
-            pR[j]= b + laplace2D2S9P(pS+j, pO->stride, pP->kL.b) + rab2 - pP->pKDB[y] * b;
-         }
-      }
-
-      // Boundaries
-#if 1 // Non-corner Edges
-
-      // Horizontal top & bottom
-      #pragma acc parallel loop
-      for (U32 x= 1; x < (pO->def.x-1); ++x )
-      {
-         const Index i1= x * pO->stride[0];
-         const Index j1= i1 + pO->stride[3];
-         const Scalar a1= pS[i1];
-         const Scalar b1= pS[j1];
-         Scalar rab2= pP->pKRR[x] * a1 * b1 * b1;
-         //const Scalar ar1= KRA0 * (1 - a1);
-         //const Scalar bd1= KDB0 * b1;
-         pR[i1]= a1 + laplace2D4S9P(pS+i1, pO->wrap.h+0, pP->kL.a) - rab2 + pP->pKRA[x] * (1 - a1);
-         pR[j1]= b1 + laplace2D4S9P(pS+j1, pO->wrap.h+0, pP->kL.b) + rab2 - pP->pKDB[0] * b1;
-
-         const Stride offsY= pO->stride[2] - pO->stride[1];
-         const Index i2= i1 + offsY;
-         const Index j2= j1 + offsY;
-         const Scalar a2= pS[i2];
-         const Scalar b2= pS[j2];
-         rab2= pP->pKRR[x] * a2 * b2 * b2;
-         pR[i2]= a2 + laplace2D4S9P(pS+i2, pO->wrap.h+2, pP->kL.a) - rab2 + pP->pKRA[x] * (1 - a2);
-         pR[j2]= b2 + laplace2D4S9P(pS+j2, pO->wrap.h+2, pP->kL.b) + rab2 - pP->pKDB[pO->def.y-1] * b2;
-      }
-#endif
-#if 1
-
-      // left & right
-      #pragma acc parallel loop
-      for (U32 y= 1; y < (pO->def.y-1); ++y )
-      {
-         Scalar a, b, rab2;
-         const Index i1= y * pO->stride[1];
-         const Index j1= i1 + pO->stride[3];
-         a= pS[i1];
-         b= pS[j1];
-         rab2= pP->pKRR[0] * a * b * b;
-         pR[i1]= a + laplace2D4S9P(pS+i1, pO->wrap.v+0, pP->kL.a) - rab2 + pP->pKRA[0] * (1 - a);
-         pR[j1]= b + laplace2D4S9P(pS+j1, pO->wrap.v+0, pP->kL.b) + rab2 - pP->pKDB[y] * b;
-
-         const Index offsX= pO->stride[1] - pO->stride[0];
-         const Index i2= i1 + offsX;
-         const Index j2= j1 + offsX;
-         a= pS[i2];
-         b= pS[j2];
-         rab2= pP->pKRR[pO->def.x-1] * a * b * b;
-         pR[i2]= a + laplace2D4S9P(pS+i2, pO->wrap.v+2, pP->kL.a) - rab2 + pP->pKRA[pO->def.x-1] * (1 - a);
-         pR[j2]= b + laplace2D4S9P(pS+j2, pO->wrap.v+2, pP->kL.b) + rab2 - pP->pKDB[y] * b;
-      }
-#endif
-#if 1	// The four corners: R,L * B,T
-      //pragma acc parallel
-      {
-         proc1(pR, pS, 0, pO->stride[3], pO->wrap.c+0, pP);
-         proc1(pR, pS, pO->stride[1]-pO->stride[0], pO->stride[3], pO->wrap.c+2, pP);
-         proc1(pR, pS, pO->stride[2]-pO->stride[1], pO->stride[3], pO->wrap.d+0, pP);
-         proc1(pR, pS, pO->stride[2]-pO->stride[0], pO->stride[3], pO->wrap.d+2, pP);
-      }
-#endif
-   } // ... acc data ..
-} // procVA
-*/
 // Simple parameters, avoids most unnecessary boundary checking
 void procA (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, const BaseParamVal * pP)
 {
@@ -330,46 +184,53 @@ U32 proc2I1A (Scalar * restrict pR, Scalar * restrict pS, const ImgOrg * pO, con
    return(2*nI+1);
 } // proc2I1A
 
-U32 proc2IADS
-(
-   Scalar * restrict pTR, 
-   Scalar * restrict pSR,
-   const ImgOrg * pO,
-   const ParamVal * pP,
-   const DSMapNode aDSMN[],
-   const U32 nDSMN,
-   const U32 nI
-)
-{
-   
-   if (nI > 0)
-   {
-      for (U32 j= 0; j < nDSMN; ++j )
-      {
-         const DomSub * pDS= aDSMN[j].d;
-         acc_set_device_num( aDSMN[j].dev.n, aDSMN[j].dev.c );
-         #pragma acc data present_or_create( pTR[pDS->in.o:pDS->in.n] ) copyin( pSR[pDS->in.o:pDS->in.n] )
-         { // present_or_copyin( pO[:1], pP[:1], pDS[:1] )
-            procAXYDS(pTR,pSR,pO,&(pP->base), pDS );
-         }
-      } // j
-      acc_wait_all();
-      for ( U32 i= 1; i < nI; ++i )
-      {
-      }
+/*** multi-device testing ***/
 
-      for (U32 j= 0; j < nDSMN; ++j )
+// Simple brute force implementation (every site boundary checked)
+void procAXY (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * pO, const BaseParamVal * pP)
+{
+   #pragma acc data present( pR[:pO->n], pS[:pO->n], pO[:1], pP[:1] )
+   {
+      #pragma acc parallel loop
+      for (U32 y= 0; y < pO->def.y; ++y )
       {
-         const DomSub * pDS= aDSMN[j].d;
-         acc_set_device_num( aDSMN[j].dev.n, aDSMN[j].dev.c );
-         #pragma acc data present( pTR[pDS->in.o:pDS->in.n] ) copyout( pSR[pDS->out.o:pDS->out.n] )
-         { // present( pO[:1], pP[:1], pDS[:1] ) 
-            procAXYDS(pSR,pTR,pO,&(pP->base), pDS);
+         #pragma acc loop vector
+         for (U32 x= 0; x < pO->def.x; ++x )
+         {
+            proc1XY(pR, pS, x, y, pO, pP);
          }
       }
    }
-   return(2*nI);
-} // proc2IADS
+} // procAXY
+
+void procAXYDS
+(
+   Scalar * restrict pR, 
+   const Scalar * restrict pS, 
+   const ImgOrg * pO, 
+   const BaseParamVal * pP,
+   const DomSub d[2]
+)
+{
+   #pragma acc data present( pR[d[0].in.o:d[0].in.n], pS[d[0].in.o:d[0].in.n] ) \
+                    present( pR[d[1].in.o:d[1].in.n], pS[d[1].in.o:d[1].in.n] ) \
+                    present( pO[:1], pP[:1], d[:2] )
+   {
+      #pragma acc parallel loop
+      for (U32 i= 0; i < 2; ++i )
+      {
+         //pragma acc parallel loop
+         for (U32 y= d[i].mm.min; y <= d[i].mm.max; ++y )
+         {
+            #pragma acc loop vector
+            for (U32 x= 0; x < pO->def.x; ++x )
+            {
+               proc1XY(pR, pS, x, y, pO, pP);
+            }
+         }
+      }
+   }
+} // procAXYDS
 
 U32 proc2IT
 (
@@ -387,11 +248,20 @@ U32 proc2IT
       for (U32 j= 0; j < nDSMN; ++j )
       {
          const DomSub * pD= aDSMN[j].d;
+         const size_t i0a= pD[0].in.o, i0n= pD[0].in.n;
+         const size_t i0b= i0a + pO->stride[2];
+         const size_t i1a= pD[1].in.o, i1n= pD[1].in.n;
+         const size_t i1b= i1a + pO->stride[2];
+
+         const size_t o0a= pD[0].upd.o, o0n= pD[0].upd.n;
+         const size_t o0b= i0a + pO->stride[2];
+         const size_t o1a= pD[1].upd.o, o1n= pD[1].upd.n;
+         const size_t o1b= i1a + pO->stride[2];
+
          acc_set_device_num( aDSMN[j].dev.n, aDSMN[j].dev.c );
-         #pragma acc data present_or_create( pTR[ pD[0].in.o:pD[0].in.n ], pTR[ pD[1].in.o:pD[1].in.n ] ) \
-                     copyin( pSR[ pD[0].in.o:pD[0].in.n ], pSR[ pD[1].in.o:pD[1].in.n ] ) \
-                     copyout( pTR[ pD[0].out.o:pD[0].out.n ], pTR[ pD[1].out.o:pD[1].out.n ] ) \
-                     present_or_copyin( pO[:1], pP[:1], pD[:2] )
+         #pragma acc data present_or_create( pTR[ i0a:i0n ], pTR[ i1a:i1n ], pTR[ i0b:i0n ], pTR[ i1b:i1n ] ) \
+                     copyin( pSR[ i0a:i0n ], pSR[ i1a:i1n ], pSR[ i0b:i0n ], pSR[ i1b:i1n ] ) \
+                     copyout( pTR[ o0a:o0n ], pTR[ o1a:o1n ], pTR[ o0b:o0n ], pTR[ o1b:o1n ] ) 
          {
             procAXYDS(pTR, pSR, pO, &(pP->base), pD);
          }
@@ -402,10 +272,20 @@ U32 proc2IT
       for (U32 j= 0; j < nDSMN; ++j )
       {
          const DomSub * pD= aDSMN[j].d;
+         const size_t i0a= pD[0].upd.o, i0n= pD[0].upd.n;
+         const size_t i0b= i0a + pO->stride[2];
+         const size_t i1a= pD[1].upd.o, i1n= pD[1].upd.n;
+         const size_t i1b= i1a + pO->stride[2];
+
+         const size_t o0a= pD[0].out.o, o0n= pD[0].out.n;
+         const size_t o0b= i0a + pO->stride[2];
+         const size_t o1a= pD[1].out.o, o1n= pD[1].out.n;
+         const size_t o1b= i1a + pO->stride[2];
+
          acc_set_device_num( aDSMN[j].dev.n, aDSMN[j].dev.c ); // present( pSR[pDS->in.o:pDS->in.n], pTR[pDS->in.o:pDS->in.n] ) 
-         #pragma acc data copyin( pTR[ pD[0].in.o:pD[0].in.n ], pTR[ pD[1].in.o:pD[1].in.n ] ) \
-                     copyout( pSR[ pD[0].in.o:pD[0].in.n ], pSR[ pD[1].in.o:pD[1].in.n ] ) \
-                     present( pO[:1], pP[:1], pD[:2] )
+         #pragma acc data copyin( pTR[ i0a:i0n ], pTR[ i1a:i1n ], pTR[ i0b:i0n ], pTR[ i1b:i1n ] ) \
+                     copyout( pSR[ o0a:o0n ], pSR[ o1a:o1n ], pSR[ o0b:o0n ], pSR[ o1b:o1n ] ) 
+
          {
             procAXYDS(pSR, pTR, pO, &(pP->base), pD);
          }
@@ -624,7 +504,7 @@ U32 procNI
                aD[j].d[i].upd.n*= pO->stride[1];
             }
             
-            printf("[%u] %u:%u\n", i, aD[j].dev.c, aD[j].dev.n); pD= aD[j].d; // dump
+            printf("[%u] %u:%u\n", j, aD[j].dev.c, aD[j].dev.n); pD= aD[j].d; // dump
             printf("   mm \t%u,%u; %u,%u\n", pD[0].mm.min, pD[0].mm.max, pD[1].mm.min, pD[1].mm.max);
             printf("   in \t%u,%u; %u,%u\n", pD[0].in.o, pD[0].in.n, pD[1].in.o, pD[1].in.n);
             printf("   out\t%u,%u; %u,%u\n", pD[0].out.o, pD[0].out.n, pD[1].out.o, pD[1].out.n);
