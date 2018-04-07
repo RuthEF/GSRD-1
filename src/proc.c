@@ -261,7 +261,8 @@ U32 proc2IT
          acc_set_device_num( aDSMN[j].dev.n, aDSMN[j].dev.c );
          #pragma acc data present_or_create( pTR[ i0a:i0n ], pTR[ i1a:i1n ], pTR[ i0b:i0n ], pTR[ i1b:i1n ] ) \
                      copyin( pSR[ i0a:i0n ], pSR[ i1a:i1n ], pSR[ i0b:i0n ], pSR[ i1b:i1n ] ) \
-                     copyout( pTR[ o0a:o0n ], pTR[ o1a:o1n ], pTR[ o0b:o0n ], pTR[ o1b:o1n ] ) 
+                     copyout( pTR[ o0a:o0n ], pTR[ o1a:o1n ], pTR[ o0b:o0n ], pTR[ o1b:o1n ] ) \
+                     present_or_copyin( pO[:1], pP[:1], pD[:2] )
          {
             procAXYDS(pTR, pSR, pO, &(pP->base), pD);
          }
@@ -285,7 +286,6 @@ U32 proc2IT
          acc_set_device_num( aDSMN[j].dev.n, aDSMN[j].dev.c ); // present( pSR[pDS->in.o:pDS->in.n], pTR[pDS->in.o:pDS->in.n] ) 
          #pragma acc data copyin( pTR[ i0a:i0n ], pTR[ i1a:i1n ], pTR[ i0b:i0n ], pTR[ i1b:i1n ] ) \
                      copyout( pSR[ o0a:o0n ], pSR[ o1a:o1n ], pSR[ o0b:o0n ], pSR[ o1b:o1n ] ) 
-
          {
             procAXYDS(pSR, pTR, pO, &(pP->base), pD);
          }
