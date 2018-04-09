@@ -2,15 +2,22 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
-
-#ifdef __PGI   // HACK
-#define INLINE inline
 //#include <linux/ktime.h>
-#else // gcc/clang
+
+#ifdef ACC
+#include <openacc.h>
+
+#ifdef __PGI
+#define INLINE inline
+#else
+#define INLINE static inline
+#endif
+
+#else // ACC
 #define INLINE
 #pragma GCC diagnostic ignored "-Wunknown-pragmas"
 #pragma clang diagnostic ignored "-Wmissing-field-initializers"
-#endif
+#endif // ACC
 
 #define GETTIME(a) gettimeofday(a,NULL)
 #define USEC(t1,t2) (((t2).tv_sec-(t1).tv_sec)*1000000+((t2).tv_usec-(t1).tv_usec))
@@ -101,17 +108,15 @@ INLINE void diffuseA (Scalar * restrict pR, const Scalar * const pS, const size_
 
 void diffuse1A (Scalar * restrict pR, const Scalar * const pS, const size_t n, const Scalar w[3])
 {
-   //pragma acc data region copyout( pR[:n] ) copyin( pS[:n], w[3] )
-   //pragma acc data region copy( pR[:n] ) copyin( pS[:n], w[3] )
-   #pragma acc data region present_or_create( pR[:n] ) \
-			present_or_copyin( pS[:n], w[3] ) \
-			copyout( pR[:n] )
+   #pragma acc data present_or_create( pR[:n] ) present_or_copyin( pS[:n], w[3] )
    diffuseA(pR,pS,n,w);
+   #pragma acc data copyout( pR[:n] )
+   { pR[0]= pR[0]; } // gcc -fopenacc compatibility
 } // diffuse1A
 
 size_t diffuse2IA (const size_t nI, Scalar * restrict pTR, Scalar * restrict pSR, const size_t n, const Scalar w[3])
 {
-   #pragma acc data region present_or_create( pTR[:n] ) copy( pSR[:n] ) present_or_copyin( w[:3] )
+   #pragma acc data present_or_create( pTR[:n] ) copy( pSR[:n] ) present_or_copyin( w[:3] )
    {
       //pragma acc ???
       for ( size_t i= 0; i < nI; ++i )
@@ -125,7 +130,7 @@ size_t diffuse2IA (const size_t nI, Scalar * restrict pTR, Scalar * restrict pSR
 
 size_t diffuse2I1A (const size_t nI, Scalar * restrict pR, Scalar * restrict pS, const size_t n, const Scalar w[3])
 {
-   #pragma acc data region present_or_create( pR[:n] ) copyin( pS[:n] ) present_or_copyin( w[:3] ) copyout( pR[:n] )
+   #pragma acc data present_or_create( pR[:n] ) copyin( pS[:n] ) present_or_copyin( w[:3] )
    {
       //pragma acc ???
       diffuseA(pR,pS,n,w);
@@ -135,6 +140,8 @@ size_t diffuse2I1A (const size_t nI, Scalar * restrict pR, Scalar * restrict pS,
          diffuseA(pR,pS,n,w);
       }
    }
+   #pragma acc data copyout( pR[:n] )
+   { pR[0]= pR[0]; } // gcc -fopenacc compatibility
    return(2*nI+1);
 } // diffuse2IA
 
@@ -170,7 +177,7 @@ int initBuff (DataContext *pDC, const size_t n, const unsigned char alignShift)
       pDC->pR2= (Scalar*) malloc(b);
    }
    printf("init() - I,E1,E2,R1,R2: %p %p %p %p %p\n", pDC->pI, pDC->pE1, pDC->pE2, pDC->pR1, pDC->pR2);
-   return(0);
+   return(NULL != pDC->pR2);
 } // initBuff
 
 void initData (DataContext *pDC, const Scalar m)
@@ -265,6 +272,18 @@ size_t saveBuff (const void * const pB, const char * const path, const size_t by
    return(0);
 } // saveBuff
 
+int init (DataContext * const pDC, const size_t n)
+{
+   int nD= acc_get_num_devices(0);
+   printf("init() - acc_get_num_devices(0)=%d", nD);
+   if (initBuff(pDC, n, 12)) // 4K (page) alignment
+   {
+      initData(pDC, 100.0); // MAX=1.79E308
+      return(1);
+   }
+   return(0);
+} // init
+
 int main( int argc, char* argv[] )
 {
    size_t iter, i, n, sumErr=0;
@@ -275,10 +294,9 @@ int main( int argc, char* argv[] )
    if( argc > 1 ) { n= atoi( argv[1] ); }
    if ( n <= 0 ) { n= 1<<16; }
 
-   initBuff(&dc, n, 12); // 4K (page) alignment
    //vAdd(dc.pE, dc.pV1, dc.pV2, n);
    //vAddA(dc.pR, dc.pV1, dc.pV2, n);
-
+   if ( init(&dc, n) )
    {
       SMVal tE[4];
       const Scalar w[3]={ 0.25, 0.5, 0.25 }; // 1D isotropic diffusion weights
@@ -286,7 +304,6 @@ int main( int argc, char* argv[] )
       iter= n / 8;
 
       // Set initial state & warm-up algorithmic data flow
-      initData(&dc, 100.0); // MAX=1.79E308
       diffuse(dc.pE1, dc.pI, dc.n, w);
       diffuse1A(dc.pR1, dc.pI, dc.n, w);
 
@@ -323,8 +340,9 @@ int main( int argc, char* argv[] )
       tE[3]= deltaT();
 #endif
       n= saveBuff(dc.pR1, "R1F64.dat", dc.n * sizeof(*(dc.pR1)));
-      printf("\tfile %zu bytes", n);
-      printf("\ttE= %G, %G, %G, %G\n", tE[0], tE[1], tE[2], tE[3]);
+      printf("\tfile %zu bytes\n", n);
+      printf("timerEpsilon= %G\n", tE[0]);
+      printf("\ttE= %G, %G, %G\n", tE[1], tE[2], tE[3]);
       
       iter= 2 * i;
    }

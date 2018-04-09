@@ -1,7 +1,8 @@
 CC      = pgcc
 CCFLAGS = -c11 -Minfo=all
-ACCFLAGS= -acc -fast -ta=tesla:cc50
+ACCFLAGS= -DACC -acc -fast -ta=tesla:cc50
 TARGET= acctst
+RUNFLAGS= 0
 OBJEXT = o
 
 # Other environments, compilers, options...
@@ -25,13 +26,14 @@ ifeq ($(findstring "not found", $(CCOUT)), "not found")
 # Catch-all disnae work...
 CC       = gcc
 CCFLAGS  = -std=c11 -W
-ACCFLAGS =
+ACCFLAGS = -DACC -fopenacc
 endif
 
 ifeq ($(findstring RPi, $(UNAME)), RPi)
 CC       = gcc
 CCFLAGS  = -std=c11 -W
-ACCFLAGS =
+ACCFLAGS = -DACC -fopenacc
+RUNFLAGS = 4096
 endif
 
 all: build run verify
@@ -40,7 +42,7 @@ build: acctst.c
 	$(CC) $(CCFLAGS) $(ACCFLAGS) -o $(TARGET) $<
 
 run: $(TARGET)
-	./$(TARGET) 0
+	./$(TARGET) $(RUNFLAGS)
 
 verify:
 
