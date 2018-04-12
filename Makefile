@@ -24,10 +24,13 @@ CCOUT := $(shell $(CC) 2>&1)
 
 # (Not working...) Fall back to standard LINUX tools if necessary
 ifeq ($(findstring "not found", $(CCOUT)), "not found")
+CC = gcc
+endif
+
+ifeq ($(findstring Debian, $(UNAME)), Debian)
 CC       = gcc
 CCFLAGS  = -std=c11 -W
-ACCFLAGS =
-RUNOPT = -A:N
+ACCFLAGS = -fopenacc -fopenmp
 endif
 
 ifeq ($(findstring RPi, $(UNAME)), RPi)
@@ -48,7 +51,7 @@ RUNOPT = -A:N
 endif
 
 ifeq ($(findstring CYGWIN_NT, $(UNAME)), CYGWIN_NT)
-OBJ = obj
+OBJEXT = obj
 TARGET = $(TARGET).exe
 endif
 
