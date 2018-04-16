@@ -210,6 +210,8 @@ int main ( int argc, char* argv[] )
       n= scanArgs(&ai, (const char **)(argv+1), argc-1);
       printf("proc: f=0x%zX, m=%zu, s=%zu\n", ai.proc.flags, ai.proc.maxIter, ai.proc.subIter);
    }
+   procTest();
+
    const DataFileInfo * const pIF= &(ai.files.init);
    const ProcInfo * const pPI= &(ai.proc);
    if (procInitAcc(pPI->flags) && initCtx(&gCtx, pIF->v[0], pIF->v[1], 8))

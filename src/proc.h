@@ -21,4 +21,7 @@ extern void procFrameStat (BlockStat * const pS, const Scalar * const pAB, const
 //extern U32 proc2I1A (Scalar * restrict pR, Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP, const U32 iM);
 extern U32 procNI (Scalar * restrict pR, Scalar * restrict pS, const ImgOrg * pO, const ParamVal * pP, const U32 nI);
 
+// Hacky test stuff
+extern void procTest (void);
+
 #endif // PROC_H

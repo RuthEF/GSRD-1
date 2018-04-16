@@ -531,3 +531,18 @@ U32 procNI
       return proc2IA(pR, pS, pO, pP, nI>>1);
    }
 } // procNI
+
+void procTest (void)
+{
+   int i, n= omp_get_max_threads();
+   printf("procTest(%d)-\n", n);
+   //n= MIN(2,n);
+   #pragma omp parallel num_threads(n)
+   {
+      n= omp_get_num_threads();
+      i= omp_get_thread_num();
+      printf("Hello %d / %d\n", i, n);
+   }
+   printf("-procTest()\n");
+} // procTest
+
