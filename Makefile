@@ -23,7 +23,9 @@ UNAME := $(shell uname -a)
 CCOUT := $(shell $(CC) 2>&1)
 
 # (Not working...) Fall back to standard LINUX tools if necessary
-ifneq ($(findstring "pgcc", $(CCOUT)), "pgcc")
+#ifneq ($(findstring "pgcc", $(CCOUT)), "pgcc")
+ifeq ($(CCOUT), "not found")
+#@echo $(CCOUT)
 CC       = gcc
 CCFLAGS  = -std=c11 -W
 ACCFLAGS = -fopenacc -fopenmp
