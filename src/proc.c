@@ -4,14 +4,10 @@
 
 #include "proc.h"
 
-#ifdef __PGI   // HACK
-#ifndef OPEN_ACC
-#define OPEN_ACC
-#endif
 #include <openacc.h>
-//#include <assert.h>
-//#include <accelmath.h>
+#include <omp.h>
 
+#ifdef __PGI   // HACK
 #define INLINE inline
 #endif
 
@@ -59,8 +55,8 @@ static AccDevTable gDev={0,};
 
 /***/
 
-#ifndef OPEN_ACC
-// Dummies for non-PGI build compatibility
+#ifdef FAKE_ACC
+// Dummies for non-ACC build compatibility
 #define acc_device_host 0
 #define acc_device_nvidia 0
 #define acc_device_not_host 0
@@ -207,9 +203,9 @@ void procAXY (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * p
 
 INLINE void procAXYDS
 (
-   Scalar * restrict pR, 
-   const Scalar * restrict pS, 
-   const ImgOrg * pO, 
+   Scalar * restrict pR,
+   const Scalar * restrict pS,
+   const ImgOrg * pO,
    const BaseParamVal * pP,
    const DomSub d[2]
 )
@@ -233,72 +229,59 @@ INLINE void procAXYDS
    }
 } // procAXYDS
 
-U32 proc2IT
+void procB
 (
-   Scalar * restrict pTR, 
+   Scalar * restrict pTR,
    Scalar * restrict pSR,
-   const ImgOrg * pO,
+   const ImgOrg   * pO,
    const ParamVal * pP,
-   const DSMapNode aDSMN[],
-   const U32 nDSMN,
-   const U32 nI
+   const DSMapNode *pDSMN
 )
 {
-   for ( U32 i= 1; i < nI; ++i )
+   const DomSub * pD= pDSMN->d;
+   const size_t i0a= pD[0].in.o, i0n= pD[0].in.n;
+   const size_t i0b= i0a + pO->stride[2];
+   const size_t i1a= pD[1].in.o, i1n= pD[1].in.n;
+   const size_t i1b= i1a + pO->stride[2];
+
+   const size_t o0a= pD[0].upd.o, o0n= pD[0].upd.n;
+   const size_t o0b= i0a + pO->stride[2];
+   const size_t o1a= pD[1].upd.o, o1n= pD[1].upd.n;
+   const size_t o1b= i1a + pO->stride[2];
+
+   acc_set_device_num( pDSMN->dev.n, pDSMN->dev.c );
+   /*pragma acc data present_or_create( pTR[ i0a:i0n ], pTR[ i1a:i1n ], pTR[ i0b:i0n ], pTR[ i1b:i1n ] ) \
+               copyin( pSR[ i0a:i0n ], pSR[ i1a:i1n ], pSR[ i0b:i0n ], pSR[ i1b:i1n ] ) \
+               copyout( pTR[ o0a:o0n ], pTR[ o1a:o1n ], pTR[ o0b:o0n ], pTR[ o1b:o1n ] ) \
+               copyin( pO[:1], pP[:1], pD[:2] )
+*/
+   #pragma acc data present_or_create( pTR[:pO->n] ) copy( pSR[:pO->n] ) present_or_copyin( pO[:1], pP[:1], pD[:2] )
    {
-      for (U32 j= 0; j < nDSMN; ++j )
-      {
-         const DomSub * pD= aDSMN[j].d;
-         const size_t i0a= pD[0].in.o, i0n= pD[0].in.n;
-         const size_t i0b= i0a + pO->stride[2];
-         const size_t i1a= pD[1].in.o, i1n= pD[1].in.n;
-         const size_t i1b= i1a + pO->stride[2];
-
-         const size_t o0a= pD[0].upd.o, o0n= pD[0].upd.n;
-         const size_t o0b= i0a + pO->stride[2];
-         const size_t o1a= pD[1].upd.o, o1n= pD[1].upd.n;
-         const size_t o1b= i1a + pO->stride[2];
-
-         acc_set_device_num( aDSMN[j].dev.n, aDSMN[j].dev.c );
-         /*pragma acc data present_or_create( pTR[ i0a:i0n ], pTR[ i1a:i1n ], pTR[ i0b:i0n ], pTR[ i1b:i1n ] ) \
-                     copyin( pSR[ i0a:i0n ], pSR[ i1a:i1n ], pSR[ i0b:i0n ], pSR[ i1b:i1n ] ) \
-                     copyout( pTR[ o0a:o0n ], pTR[ o1a:o1n ], pTR[ o0b:o0n ], pTR[ o1b:o1n ] ) \
-                     copyin( pO[:1], pP[:1], pD[:2] )
-	*/
-         #pragma acc data present_or_create( pTR[:pO->n] ) copy( pSR[:pO->n] ) present_or_copyin( pO[:1], pP[:1], pD[:2] )
-         {
-            procAXYDS(pTR, pSR, pO, &(pP->base), pD);
-         }
-      } // j
-
-	printf("proc2IT(1)\n");
-
-      acc_wait_all();
-      
-      for (U32 j= 0; j < nDSMN; ++j )
-      {
-         const DomSub * pD= aDSMN[j].d;
-         const size_t i0a= pD[0].upd.o, i0n= pD[0].upd.n;
-         const size_t i0b= i0a + pO->stride[2];
-         const size_t i1a= pD[1].upd.o, i1n= pD[1].upd.n;
-         const size_t i1b= i1a + pO->stride[2];
-
-         const size_t o0a= pD[0].out.o, o0n= pD[0].out.n;
-         const size_t o0b= i0a + pO->stride[2];
-         const size_t o1a= pD[1].out.o, o1n= pD[1].out.n;
-         const size_t o1b= i1a + pO->stride[2];
-
-         acc_set_device_num( aDSMN[j].dev.n, aDSMN[j].dev.c ); // present( pSR[pDS->in.o:pDS->in.n], pTR[pDS->in.o:pDS->in.n] ) 
-         #pragma acc data copyin( pTR[ i0a:i0n ], pTR[ i1a:i1n ], pTR[ i0b:i0n ], pTR[ i1b:i1n ] ) \
-                     copyout( pSR[ o0a:o0n ], pSR[ o1a:o1n ], pSR[ o0b:o0n ], pSR[ o1b:o1n ] ) 
-         {
-            procAXYDS(pSR, pTR, pO, &(pP->base), pD);
-         }
-      }
-      if (i < nI) { acc_wait_all(); }
+      procAXYDS(pTR, pSR, pO, &(pP->base), pD);
    }
-   return(2*nI);
-} // proc2IT
+
+/*
+   const DomSub * pD= aDSMN[j].d;
+   const size_t i0a= pD[0].upd.o, i0n= pD[0].upd.n;
+   const size_t i0b= i0a + pO->stride[2];
+   const size_t i1a= pD[1].upd.o, i1n= pD[1].upd.n;
+   const size_t i1b= i1a + pO->stride[2];
+
+   const size_t o0a= pD[0].out.o, o0n= pD[0].out.n;
+   const size_t o0b= i0a + pO->stride[2];
+   const size_t o1a= pD[1].out.o, o1n= pD[1].out.n;
+   const size_t o1b= i1a + pO->stride[2];
+
+   acc_set_device_num( aDSMN[j].dev.n, aDSMN[j].dev.c ); // present( pSR[pDS->in.o:pDS->in.n], pTR[pDS->in.o:pDS->in.n] )
+   pragma acc data copyin( pTR[ i0a:i0n ], pTR[ i1a:i1n ], pTR[ i0b:i0n ], pTR[ i1b:i1n ] ) \
+               copyout( pSR[ o0a:o0n ], pSR[ o1a:o1n ], pSR[ o0b:o0n ], pSR[ o1b:o1n ] )
+
+   pragma acc data present( pTR[:pO->n], pSR[:pO->n], pO[:1], pP[:1], pD[:2] )
+   {
+      procAXYDS(pSR, pTR, pO, &(pP->base), pD);
+   }
+*/
+} // procB
 
 
 /** EXT **/
@@ -435,89 +418,116 @@ Bool32 procSetNextAcc (Bool32 wrap)
    return(FALSE);
 } // procSetNextAcc
 
+U32 hackMD
+(
+   Scalar * restrict pR,
+   Scalar * restrict pS,
+   const ImgOrg   * pO,
+   const ParamVal * pP,
+   const U32 nI
+)
+{
+   DSMapNode aD[3];
+   DomSub *pD;
+   int nD= 0, mD= MIN(2, gDev.nDev);
+   if (mD > 1)
+   {
+      U32 o= 0, n= pO->def.y;
+      if (gDev.iHost < gDev.nDev)
+      {
+         U32 se= 7;
+         aD[nD].dev= gDev.d[gDev.iHost];
+         pD= aD[nD].d;
+
+         pD->mm.min= 0;
+         pD->mm.max= se - 1;
+         pD->in.o= 0;
+         pD->in.n= 2 + pD->mm.max - pD->mm.min;
+         pD->upd= pD->out= pD->in;
+         pD++;
+         pD->mm.min= pO->def.y - se;
+         pD->mm.max= pO->def.y - 1;
+         pD->in.o= pD->mm.min - 1;
+         pD->in.n= 2 + pD->mm.max - pD->mm.min;
+         pD->upd= pD->out= pD->in;
+         nD++;
+         o+= se;
+         n-= 2 * se;
+      }
+      if (nD < mD)
+      {
+         U32 iNH= 0;
+         iNH+= (0 == gDev.iHost);
+
+         aD[nD].dev= gDev.d[iNH];
+         pD= aD[nD].d;
+
+         pD[0].mm.min= o;
+         pD[0].mm.max= pD[0].mm.min + (n / 2) - 1;
+         pD[0].in.o= pD[0].mm.min - 1;
+         pD[0].in.n= 2 + pD[0].mm.max - pD[0].mm.min;
+         pD[0].upd= pD[0].out= pD[0].in;
+
+         pD[1].mm.min= pD[0].mm.max + 1;
+         pD[1].mm.max= pD[1].mm.min + n - (n / 2) - 1;
+         pD[1].in.o= pD[1].mm.min;
+         pD[1].in.n= 2 + pD[1].mm.max - pD[1].mm.min;
+         pD[1].upd= pD[1].out= pD[1].in;
+        nD++;
+      }
+
+      for (int j=0; j<nD; j++)
+      {
+         for ( int i= 0; i<2; ++i )
+         {
+            aD[j].d[i].in.o*=  pO->stride[1];
+            aD[j].d[i].in.n*=  pO->stride[1];
+            aD[j].d[i].out.o*= pO->stride[1];
+            aD[j].d[i].out.n*= pO->stride[1];
+            aD[j].d[i].upd.o*= pO->stride[1];
+            aD[j].d[i].upd.n*= pO->stride[1];
+         }
+
+         printf("[%u] %u:%u\n", j, aD[j].dev.c, aD[j].dev.n); pD= aD[j].d; // dump
+         printf("   mm \t%u,%u; %u,%u\n", pD[0].mm.min, pD[0].mm.max, pD[1].mm.min, pD[1].mm.max);
+         printf("   in \t%u,%u; %u,%u\n", pD[0].in.o, pD[0].in.n, pD[1].in.o, pD[1].in.n);
+         printf("   out\t%u,%u; %u,%u\n", pD[0].out.o, pD[0].out.n, pD[1].out.o, pD[1].out.n);
+         printf("   upd\t%u,%u; %u,%u\n", pD[0].upd.o, pD[0].out.n, pD[1].out.o, pD[1].out.n);
+      }
+      if (nD > 1)
+      {
+         for (U32 i= 0; i < nI; ++i )
+         {
+            #pragma omp parallel num_threads(nD)
+            {
+               int i= omp_get_thread_num();
+               procB(pR, pS, pO, pP, aD+i);
+            }
+            //acc_wait_all();
+            #pragma omp parallel num_threads(nD)
+            {
+               int i= omp_get_thread_num();
+               procB(pS, pR, pO, pP, aD+i);
+            }
+         }
+      }
+   }
+   return(0);
+} // hackMD
 
 U32 procNI
 (
-   Scalar * restrict pR, 
-   Scalar * restrict pS, 
-   const ImgOrg * pO, 
-   const ParamVal * pP, 
+   Scalar * restrict pR,
+   Scalar * restrict pS,
+   const ImgOrg   * pO,
+   const ParamVal * pP,
    const U32 nI
 )
 {
    if (nI & 1) return proc2I1A(pR, pS, pO, pP, nI>>1);
    else
    {
-      DSMapNode aD[3];
-      DomSub *pD;
-      int nD= 0, mD= MIN(2, gDev.nDev);
-      if (mD > 1)
-      {
-         U32 o= 0, n= pO->def.y;
-         if (gDev.iHost < gDev.nDev)
-         {
-            U32 se= 7;
-            aD[nD].dev= gDev.d[gDev.iHost];
-            pD= aD[nD].d;
-
-            pD->mm.min= 0;
-            pD->mm.max= se - 1;
-            pD->in.o= 0;
-            pD->in.n= 2 + pD->mm.max - pD->mm.min;
-            pD->upd= pD->out= pD->in;
-            pD++;
-            pD->mm.min= pO->def.y - se;
-            pD->mm.max= pO->def.y - 1;
-            pD->in.o= pD->mm.min - 1;
-            pD->in.n= 2 + pD->mm.max - pD->mm.min;
-            pD->upd= pD->out= pD->in;
-            nD++;
-            o+= se;
-            n-= 2 * se;
-         }
-         if (nD < mD)
-         {
-            U32 iNH= 0;
-            iNH+= (0 == gDev.iHost);
- 
-            aD[nD].dev= gDev.d[iNH];
-            pD= aD[nD].d;
-
-            pD[0].mm.min= o;
-            pD[0].mm.max= pD[0].mm.min + (n / 2) - 1;
-            pD[0].in.o= pD[0].mm.min - 1;
-            pD[0].in.n= 2 + pD[0].mm.max - pD[0].mm.min;
-            pD[0].upd= pD[0].out= pD[0].in;
-
-            pD[1].mm.min= pD[0].mm.max + 1;
-            pD[1].mm.max= pD[1].mm.min + n - (n / 2) - 1;
-            pD[1].in.o= pD[1].mm.min;
-            pD[1].in.n= 2 + pD[1].mm.max - pD[1].mm.min;
-            pD[1].upd= pD[1].out= pD[1].in;
-           nD++;
-         }
-         
-         for (int j=0; j<nD; j++)
-         {
-            for ( int i= 0; i<2; ++i )
-            {
-               aD[j].d[i].in.o*=  pO->stride[1];
-               aD[j].d[i].in.n*=  pO->stride[1];
-               aD[j].d[i].out.o*= pO->stride[1];
-               aD[j].d[i].out.n*= pO->stride[1];
-               aD[j].d[i].upd.o*= pO->stride[1];
-               aD[j].d[i].upd.n*= pO->stride[1];
-            }
-            
-            printf("[%u] %u:%u\n", j, aD[j].dev.c, aD[j].dev.n); pD= aD[j].d; // dump
-            printf("   mm \t%u,%u; %u,%u\n", pD[0].mm.min, pD[0].mm.max, pD[1].mm.min, pD[1].mm.max);
-            printf("   in \t%u,%u; %u,%u\n", pD[0].in.o, pD[0].in.n, pD[1].in.o, pD[1].in.n);
-            printf("   out\t%u,%u; %u,%u\n", pD[0].out.o, pD[0].out.n, pD[1].out.o, pD[1].out.n);
-            printf("   upd\t%u,%u; %u,%u\n", pD[0].upd.o, pD[0].out.n, pD[1].out.o, pD[1].out.n);
-         }
-         if (nD > 0) return proc2IT(pR, pS, pO, pP, aD, nD, nI>>1);
-      }
-      //else 
+      //hackMD(pR, pS, pO, pP, nI>>1);
       return proc2IA(pR, pS, pO, pP, nI>>1);
    }
 } // procNI
