@@ -280,10 +280,10 @@ void procB
                copyout( pTR[ o0a:o0n ], pTR[ o1a:o1n ], pTR[ o0b:o0n ], pTR[ o1b:o1n ] ) \
                copyin( pO[:1], pP[:1], pD[:2] )
 */
-   #pragma acc data  present_or_create( pTR[:pO->n] ) copy( pSR[:pO->n] ) \
-                     present_or_copyin( pO[:1], pP[:1], pD[:2] ) async( pDSMN->dev.n )
+   #pragma acc data present_or_create( pR[:pO->n] ) copy( pS[:pO->n] ) present_or_copyin( pO[:1], pP[:1], pD[:2] ) 
+   #pragma acc parallel async( pDSMN->dev.n )
    {
-      #pragma acc parallel loop
+      //pragma acc parallel loop
       for (U32 i= 0; i < 2; ++i )
       {
          //pragma acc parallel loop
@@ -390,6 +390,7 @@ U32 hackMD
                procB(pSR, pTR, pO, &(pP->base), aD+i);
             }
          }
+         return(2 * nI);
       }
    }
    return(0);
@@ -511,13 +512,15 @@ U32 procNI
    if (nI & 1) return proc2I1A(pR, pS, pO, pP, nI>>1);
    else
    {
-      //hackMD(pR, pS, pO, &(pP->base), nI>>1);
-      return proc2IA(pR, pS, pO, pP, nI>>1);
+      U32 n= hackMD(pR, pS, pO, pP, nI>>1);
+      if (0 == n) { n= proc2IA(pR, pS, pO, pP, nI>>1); }
+      return(n);
    }
 } // procNI
 
 void procTest (void)
 {
+#ifdef OMP
    int i, n= omp_get_max_threads();
    printf("procTest(%d)-\n", n);
    //n= MIN(2,n);
@@ -528,5 +531,6 @@ void procTest (void)
       printf("Hello %d / %d\n", i, n);
    }
    printf("-procTest()\n");
+#endif
 } // procTest
 
