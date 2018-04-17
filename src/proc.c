@@ -4,10 +4,14 @@
 
 #include "proc.h"
 
+#ifdef ACC
 #include <openacc.h>
+#endif
+#ifdef OMP
 #include <omp.h>
+#endif
 
-#ifdef __PGI   // HACK
+#ifdef __PGI   // HACKY
 #define INLINE inline
 #endif
 
@@ -53,10 +57,8 @@ typedef struct
 static AccDevTable gDev={0,};
 
 
-/***/
-
-#ifdef FAKE_ACC
-// Dummies for non-ACC build compatibility
+/*** Dummies for build compatibility ***/
+#ifndef ACC
 #define acc_device_host 0
 #define acc_device_nvidia 0
 #define acc_device_not_host 0
@@ -65,7 +67,30 @@ int acc_get_device_num (int t) { return(-1); }
 void acc_set_device_num (int n, int t) { ; }
 void acc_wait_all (void) { ; }
 #endif
+#ifndef OMP
+int omp_get_max_threads (void) { return(0); }
+int omp_get_num_threads (void) { return(0); }
+int omp_get_thread_num (void) { return(0); }
+#endif
 
+/*** Misc util ***/
+
+static void addDevType (AccDevTable *pT, const U8 c, const U8 nC)
+{
+   int n= nC;
+   U8 nA= 0;
+   while (--n >= 0)
+   {
+      if (pT->nDev < ACC_DEV_MAX)
+      {
+         pT->d[pT->nDev].c= c;
+         pT->d[pT->nDev].n= n;
+         ++(pT->nDev);
+      }
+   }
+} // addDevType
+
+/*** Application (model) routines ***/
 
 // Stride 0..3 -> +-X +-Y
 //#pragma acc routine vector
@@ -200,7 +225,7 @@ void procAXY (Scalar * restrict pR, const Scalar * restrict pS, const ImgOrg * p
 
 
 /*** multi-device testing ***/
-
+/* DEPRECATE
 INLINE void procAXYDS
 (
    Scalar * restrict pR,
@@ -228,14 +253,14 @@ INLINE void procAXYDS
       }
    }
 } // procAXYDS
-
+*/
 void procB
 (
-   Scalar * restrict pTR,
-   Scalar * restrict pSR,
-   const ImgOrg   * pO,
-   const ParamVal * pP,
-   const DSMapNode *pDSMN
+   Scalar * restrict pR,
+   Scalar * restrict pS,
+   const ImgOrg       * pO,
+   const BaseParamVal * pP,
+   const DSMapNode   * pDSMN
 )
 {
    const DomSub * pD= pDSMN->d;
@@ -255,173 +280,29 @@ void procB
                copyout( pTR[ o0a:o0n ], pTR[ o1a:o1n ], pTR[ o0b:o0n ], pTR[ o1b:o1n ] ) \
                copyin( pO[:1], pP[:1], pD[:2] )
 */
-   #pragma acc data present_or_create( pTR[:pO->n] ) copy( pSR[:pO->n] ) present_or_copyin( pO[:1], pP[:1], pD[:2] )
+   #pragma acc data  present_or_create( pTR[:pO->n] ) copy( pSR[:pO->n] ) \
+                     present_or_copyin( pO[:1], pP[:1], pD[:2] ) async( pDSMN->dev.n )
    {
-      procAXYDS(pTR, pSR, pO, &(pP->base), pD);
+      #pragma acc parallel loop
+      for (U32 i= 0; i < 2; ++i )
+      {
+         //pragma acc parallel loop
+         for (U32 y= pD[i].mm.min; y <= pD[i].mm.max; ++y )
+         {
+            #pragma acc loop vector
+            for (U32 x= 0; x < pO->def.x; ++x )
+            {
+               proc1XY(pR, pS, x, y, pO, pP);
+            }
+         }
+      }
    }
-
-/*
-   const DomSub * pD= aDSMN[j].d;
-   const size_t i0a= pD[0].upd.o, i0n= pD[0].upd.n;
-   const size_t i0b= i0a + pO->stride[2];
-   const size_t i1a= pD[1].upd.o, i1n= pD[1].upd.n;
-   const size_t i1b= i1a + pO->stride[2];
-
-   const size_t o0a= pD[0].out.o, o0n= pD[0].out.n;
-   const size_t o0b= i0a + pO->stride[2];
-   const size_t o1a= pD[1].out.o, o1n= pD[1].out.n;
-   const size_t o1b= i1a + pO->stride[2];
-
-   acc_set_device_num( aDSMN[j].dev.n, aDSMN[j].dev.c ); // present( pSR[pDS->in.o:pDS->in.n], pTR[pDS->in.o:pDS->in.n] )
-   pragma acc data copyin( pTR[ i0a:i0n ], pTR[ i1a:i1n ], pTR[ i0b:i0n ], pTR[ i1b:i1n ] ) \
-               copyout( pSR[ o0a:o0n ], pSR[ o1a:o1n ], pSR[ o0b:o0n ], pSR[ o1b:o1n ] )
-
-   pragma acc data present( pTR[:pO->n], pSR[:pO->n], pO[:1], pP[:1], pD[:2] )
-   {
-      procAXYDS(pSR, pTR, pO, &(pP->base), pD);
-   }
-*/
 } // procB
-
-
-/** EXT **/
-
-/* /opt/pgi/linux.../2017/iclude/openacc.h
-
-typedef enum{
-        acc_device_none = 0,
-        acc_device_default = 1,
-        acc_device_host = 2,
-        acc_device_not_host = 3,
-        acc_device_nvidia = 4,
-        acc_device_radeon = 5,
-        acc_device_xeonphi = 6,
-        acc_device_pgi_opencl = 7,
-        acc_device_nvidia_opencl = 8,
-        acc_device_opencl = 9
-    }acc_device_t;
-
-void acc_set_default_async(int async);
-int acc_get_default_async(void);
-extern int acc_get_num_devices( acc_device_t devtype );
-extern acc_device_t acc_get_device(void);
-extern void acc_set_device_num( int devnum, acc_device_t devtype );
-extern int acc_get_device_num( acc_device_t devtype );
-extern void acc_init( acc_device_t devtype );
-extern void acc_shutdown( acc_device_t devtype );
-extern void acc_set_deviceid( int devid );
-extern int acc_get_deviceid( int devnum, acc_device_t devtype );
-extern int acc_async_test( __PGI_LLONG async );
-extern int acc_async_test_all(void);
-extern void acc_async_wait( __PGI_LLONG async );
-extern void acc_async_wait_all(void);
-extern void acc_wait( __PGI_LLONG async );
-extern void acc_wait_async( __PGI_LLONG arg, __PGI_LLONG async );
-extern void acc_wait_all(void);
-extern void acc_wait_all_async( __PGI_LLONG async );
-extern int acc_on_device( acc_device_t devtype );
-extern void acc_free(void*); */
-
-Bool32 procInitAcc (size_t f) // arg param ?
-{
-   int nInit= (0 == (f & (PROC_FLAG_ACCGPU|PROC_FLAG_ACCHOST)));
-   int nNV= acc_get_num_devices( acc_device_nvidia );
-   int nH= acc_get_num_devices( acc_device_host );
-   int nNH= acc_get_num_devices( acc_device_not_host );
-   int id;
-
-   printf("procInitAcc() - nH=%d nNV=%d, (other=%d)\n", nH, nNV, nNH - nNV);
-   gDev.nDev= 0;
-   gDev.iHost= -1;
-   if (nH > 0)
-   {
-      id= acc_get_device_num(acc_device_host);
-      printf("\tH:id=%d\n", id);
-      if (f & PROC_FLAG_ACCHOST)
-      {
-         id= nH;
-         while (--id >= 0)
-         {
-            if (gDev.nDev < ACC_DEV_MAX)
-            {
-               gDev.d[gDev.nDev].c= acc_device_host;
-               gDev.d[gDev.nDev].n= id;
-               ++gDev.nDev;
-            }
-            //acc_set_device_num( id, acc_device_host );
-            //acc_init( acc_device_host );
-            ++nInit;
-         }
-         gDev.iHost= 0;
-      }
-   }
-   if (nNV > 0)
-   {
-      id= acc_get_device_num(acc_device_nvidia);
-      printf("\tNV:id=%d\n", id);
-      if (f & PROC_FLAG_ACCGPU)
-      {
-         id= nNV;
-         while (--id >= 0)
-         {
-            if (gDev.nDev < ACC_DEV_MAX)
-            {
-               gDev.d[gDev.nDev].c= acc_device_nvidia;
-               gDev.d[gDev.nDev].n= id;
-               ++gDev.nDev;
-            }
-            //acc_set_device_num( id, acc_device_nvidia );
-            //acc_init( acc_device_nvidia ); // get_err?
-            ++nInit;
-         }
-      }
-   }
-   if (gDev.nDev > 0)
-   {
-      gDev.iCurr= 0;
-      acc_set_device_num( gDev.d[0].n, gDev.d[0].c );
-   }
-   return(nInit > 0);
-} // procInitAcc
-
-const char *procGetCurrAccTxt (char t[], int m)
-{
-   const AccDev * const pA= gDev.d + gDev.iCurr;
-   const char *s="C";
-#ifdef OPEN_ACC
-   switch (pA->c)
-   {
-      case acc_device_nvidia : s= "NV"; break;
-      case acc_device_host :   s= "H"; break;
-      default : s= "?"; break;
-   }
-#endif // OPEN_ACC
-   snprintf(t, m, "%s%u", s, pA->n);
-   return(t);
-} // procGetCurrAccTxt
-
-Bool32 procSetNextAcc (Bool32 wrap)
-{
-#ifdef OPEN_ACC
-   if (gDev.nDev > 0)
-   {
-      U8 iN= gDev.iCurr + 1;
-      if (wrap) { iN= iN % gDev.nDev; }
-      if (iN < gDev.nDev)
-      {
-         acc_set_device_num( gDev.d[iN].n, gDev.d[iN].c );
-         gDev.iCurr= iN;
-         return(TRUE);
-      }
-   }
-#endif // OPEN_ACC
-   return(FALSE);
-} // procSetNextAcc
 
 U32 hackMD
 (
-   Scalar * restrict pR,
-   Scalar * restrict pS,
+   Scalar * restrict pTR,
+   Scalar * restrict pSR,
    const ImgOrg   * pO,
    const ParamVal * pP,
    const U32 nI
@@ -429,7 +310,7 @@ U32 hackMD
 {
    DSMapNode aD[3];
    DomSub *pD;
-   int nD= 0, mD= MIN(2, gDev.nDev);
+   U32 nD= 0, mD= MIN(2, gDev.nDev);
    if (mD > 1)
    {
       U32 o= 0, n= pO->def.y;
@@ -476,9 +357,9 @@ U32 hackMD
         nD++;
       }
 
-      for (int j=0; j<nD; j++)
+      for ( U32 j=0; j<nD; j++)
       {
-         for ( int i= 0; i<2; ++i )
+         for ( U32 i= 0; i<2; ++i )
          {
             aD[j].d[i].in.o*=  pO->stride[1];
             aD[j].d[i].in.n*=  pO->stride[1];
@@ -498,22 +379,125 @@ U32 hackMD
       {
          for (U32 i= 0; i < nI; ++i )
          {
-            #pragma omp parallel num_threads(nD)
+            //pragma omp parallel for
+            for (U32 j= 0; j < nD; ++j)
             {
-               int i= omp_get_thread_num();
-               procB(pR, pS, pO, pP, aD+i);
+               procB(pTR, pSR, pO, &(pP->base), aD+j);
             }
-            //acc_wait_all();
-            #pragma omp parallel num_threads(nD)
+            //pragma omp parallel for
+            for (U32 j= 0; j < nD; ++j)
             {
-               int i= omp_get_thread_num();
-               procB(pS, pR, pO, pP, aD+i);
+               procB(pSR, pTR, pO, &(pP->base), aD+i);
             }
          }
       }
    }
    return(0);
 } // hackMD
+
+/*** External Interface ***/
+
+/* /opt/pgi/linux.../2017/iclude/openacc.h
+
+typedef enum{
+        acc_device_none = 0,
+        acc_device_default = 1,
+        acc_device_host = 2,
+        acc_device_not_host = 3,
+        acc_device_nvidia = 4,
+        acc_device_radeon = 5,
+        acc_device_xeonphi = 6,
+        acc_device_pgi_opencl = 7,
+        acc_device_nvidia_opencl = 8,
+        acc_device_opencl = 9
+    }acc_device_t;
+
+void acc_set_default_async(int async);
+int acc_get_default_async(void);
+extern int acc_get_num_devices( acc_device_t devtype );
+extern acc_device_t acc_get_device(void);
+extern void acc_set_device_num( int devnum, acc_device_t devtype );
+extern int acc_get_device_num( acc_device_t devtype );
+extern void acc_init( acc_device_t devtype );
+extern void acc_shutdown( acc_device_t devtype );
+extern void acc_set_deviceid( int devid );
+extern int acc_get_deviceid( int devnum, acc_device_t devtype );
+extern int acc_async_test( __PGI_LLONG async );
+extern int acc_async_test_all(void);
+extern void acc_async_wait( __PGI_LLONG async );
+extern void acc_async_wait_all(void);
+extern void acc_wait( __PGI_LLONG async );
+extern void acc_wait_async( __PGI_LLONG arg, __PGI_LLONG async );
+extern void acc_wait_all(void);
+extern void acc_wait_all_async( __PGI_LLONG async );
+extern int acc_on_device( acc_device_t devtype );
+extern void acc_free(void*); */
+
+
+Bool32 procInitAcc (size_t f) // arg param ?
+{
+   int initOK= (0 == (f & (PROC_FLAG_ACCGPU|PROC_FLAG_ACCHOST)));
+   int nNV= acc_get_num_devices( acc_device_nvidia );
+   int nH= acc_get_num_devices( acc_device_host );
+   int nNH= acc_get_num_devices( acc_device_not_host );
+
+   printf("procInitAcc() - nH=%d nNV=%d, (other=%d)\n", nH, nNV, nNH - nNV);
+   gDev.nDev= 0;
+   gDev.iHost= -1;
+   if ((nH > 0) && (f & PROC_FLAG_ACCHOST))
+   {
+      printf("\tH:id=%d\n", acc_get_device_num(acc_device_host));
+      addDevType(&gDev, acc_device_host, nH);
+      gDev.iHost= 0;
+   }
+   if ((nNV > 0) && (f & PROC_FLAG_ACCGPU))
+   {
+      printf("\tNV:id=%d\n", acc_get_device_num(acc_device_nvidia));
+      addDevType(&gDev, acc_device_nvidia, nH);
+   }
+   initOK+= gDev.nDev;
+   if (gDev.nDev > 0)
+   {
+      gDev.iCurr= 0;
+      acc_set_device_num( gDev.d[0].n, gDev.d[0].c );
+   }
+   return(initOK > 0);
+} // procInitAcc
+
+const char *procGetCurrAccTxt (char t[], int m)
+{
+   const AccDev * const pA= gDev.d + gDev.iCurr;
+   const char *s="C";
+#ifdef OPEN_ACC
+   switch (pA->c)
+   {
+      case acc_device_nvidia : s= "NV"; break;
+      case acc_device_host :   s= "H"; break;
+      default : s= "?"; break;
+   }
+#endif // OPEN_ACC
+   snprintf(t, m, "%s%u", s, pA->n);
+   return(t);
+} // procGetCurrAccTxt
+
+Bool32 procSetNextAcc (Bool32 wrap)
+{
+#ifdef OPEN_ACC
+   if (gDev.nDev > 0)
+   {
+      U8 iN= gDev.iCurr + 1;
+      if (wrap) { iN= iN % gDev.nDev; }
+      if (iN < gDev.nDev)
+      {
+         acc_set_device_num( gDev.d[iN].n, gDev.d[iN].c );
+         gDev.iCurr= iN;
+         return(TRUE);
+      }
+   }
+#endif // OPEN_ACC
+   return(FALSE);
+} // procSetNextAcc
+
 
 U32 procNI
 (
@@ -527,7 +511,7 @@ U32 procNI
    if (nI & 1) return proc2I1A(pR, pS, pO, pP, nI>>1);
    else
    {
-      //hackMD(pR, pS, pO, pP, nI>>1);
+      //hackMD(pR, pS, pO, &(pP->base), nI>>1);
       return proc2IA(pR, pS, pO, pP, nI>>1);
    }
 } // procNI

@@ -1,14 +1,15 @@
 # GSRD makefile
 
 # PGI C compiler is default
-CC       = pgcc
-CCFLAGS  = -c11 -Minfo=all
-
+CC      = pgcc
+CCFLAGS = -c11 -Minfo=all
+ABFLAGS = -DACC
 # PGI Acceleration options - NB: Build for GTX1080 requires "cc60" to launch on GPU...
 #ACCFLAGS = -mp -fast -acc=verystrict -ta=multicore,tesla:cc60
 # -Mlarge_arrays # >2GB
 # Whereas INKCAP (GTX970M - "cc50") works with default...
-ACCFLAGS = -mp -fast -acc=verystrict -ta=multicore,tesla
+#ACCFLAGS = -mp -fast -acc=verystrict -ta=multicore,tesla
+ACCFLAGS = -fast -acc=verystrict -ta=multicore,tesla
 #FAST = -O4 -Mautoinline -acc=verystrict
 #OPT = -ta=tesla:managed #ERR: malloc: call to cuMemAllocManaged returned error 3: Not initialized
 
@@ -29,31 +30,34 @@ ifeq ($(CCOUT), "not found")
 CC       = gcc
 CCFLAGS  = -std=c11 -W
 ACCFLAGS = -fopenacc -fopenmp
+ABFLAGS  = -DACC -DOMP
 endif
 
 ifeq ($(findstring Debian, $(UNAME)), Debian)
-#CC       = gcc
-#CCFLAGS  = -std=c11 -W
-#ACCFLAGS = -fopenacc -fopenmp
+CC       = gcc
+CCFLAGS  = -std=c11 -W
+ACCFLAGS = -fopenacc -fopenmp
 endif
 
 ifeq ($(findstring RPi, $(UNAME)), RPi)
-#CC       = gcc
-#CCFLAGS  = -std=c11 -W
+CC       = gcc
+CCFLAGS  = -std=c11 -W
 DATAFILE = "init/gsrd00000(256,256,2)F64.raw"
-CMP_FILE = 
+CMP_FILE =
 #"ref/gsrd00100(256,256,2)F64.raw"
 ACCFLAGS = -fopenmp
-RUNOPT = -A:N
+ABFLAGS  = -DOMP
+RUNOPT   = -A:N
 endif
 
 # Other environments, compilers, options...
 ifeq ($(findstring Darwin, $(UNAME)), Darwin)
 CC = clang
-#CCFLAGS  = -std=c11 -W
+CCFLAGS  = -std=c11 -W
 DATAFILE = "init/gsrd00000(512,512,2)F64.raw"
 CMP_FILE = "ref/gsrd00100(512,512,2)F64.raw"
-RUNOPT = -A:N
+ABFLAGS  =
+RUNOPT   = -A:N
 endif
 
 ifeq ($(findstring CYGWIN_NT, $(UNAME)), CYGWIN_NT)
@@ -79,7 +83,7 @@ build: $(SRC)
 	$(CC) $(CCFLAGS) -o $(TARGET) $(SRC)
 
 buildacc: $(SRC)
-	$(CC) $(CCFLAGS) $(ACCFLAGS) -o $(TARGET) $(SRC)
+	$(CC) $(CCFLAGS) $(ACCFLAGS) $(ABFLAGS) -o $(TARGET) $(SRC)
 
 run: $(TARGET)
 	./$(TARGET) $(DATAFILE) -C:$(CMP_FILE) $(RUNFLAGS)
