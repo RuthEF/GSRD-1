@@ -541,7 +541,7 @@ void procTest (void)
 void procMPITest (void)
 {
 //#ifdef MPI
-   int rank,size; 
+   //int rank,size; 
    /* Initialize the MPI library */ 
    //MPI_Init(&argc,&argv);
    
@@ -549,7 +549,7 @@ void procMPITest (void)
    //MPI_Comm_rank(MPI_COMM_WORLD,&rank); 
    //MPI_Comm_size(MPI_COMM_WORLD,&size); 
    /* Call MPI routines like MPI_Send, MPI_Recv, ... 
-   */ ... /* 
+   //*/ ... /* 
    Shutdown MPI library */ 
     //MPI_Finalize();
  
