@@ -1,4 +1,4 @@
-// proc.c - Gray-Scott Reaction-Diffusion using OpenACC
+//// proc.c - Gray-Scott Reaction-Diffusion using OpenACC
 // https://github.com/DrAl-HFS/GSRD.git
 // (c) GSRD Project Contributors Feb-April 2018
 
@@ -10,10 +10,10 @@
 #ifdef OMP
 #include <omp.h>
 #endif
-#ifdef MPI
-#include <mpi.h>
-#endif
-#include <mpi.h>
+//#ifdef MPI
+//#include <mpi.h>
+//#endif
+//#include <mpi.h>
 
 #ifdef __PGI   // HACKY
 #define INLINE inline
