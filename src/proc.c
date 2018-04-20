@@ -502,7 +502,7 @@ Bool32 procSetNextAcc (Bool32 wrap)
 #endif // OPEN_ACC
    return(FALSE);
 } // procSetNextAcc
-
+//
 
 U32 procNI
 (
@@ -543,15 +543,15 @@ void procMPITest (void)
 //#ifdef MPI
    int rank,size; 
    /* Initialize the MPI library */ 
-   MPI_Init(&argc,&argv);
+   //MPI_Init(&argc,&argv);
    
    /* Determine the calling process rank and total number of ranks */ 
-   MPI_Comm_rank(MPI_COMM_WORLD,&rank); 
-   MPI_Comm_size(MPI_COMM_WORLD,&size); 
+   //MPI_Comm_rank(MPI_COMM_WORLD,&rank); 
+   //MPI_Comm_size(MPI_COMM_WORLD,&size); 
    /* Call MPI routines like MPI_Send, MPI_Recv, ... 
    */ ... /* 
    Shutdown MPI library */ 
-    MPI_Finalize();
+    //MPI_Finalize();
  
  printf("-procMPITest()\n");
 //#endif
