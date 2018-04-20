@@ -10,6 +10,10 @@
 #ifdef OMP
 #include <omp.h>
 #endif
+#ifdef MPI
+#include <mpi.h>
+#endif
+#include <mpi.h>
 
 #ifdef __PGI   // HACKY
 #define INLINE inline
@@ -534,3 +538,21 @@ void procTest (void)
 #endif
 } // procTest
 
+void procMPITest (void)
+{
+//#ifdef MPI
+   int rank,size; 
+   /* Initialize the MPI library */ 
+   MPI_Init(&argc,&argv);
+   
+   /* Determine the calling process rank and total number of ranks */ 
+   MPI_Comm_rank(MPI_COMM_WORLD,&rank); 
+   MPI_Comm_size(MPI_COMM_WORLD,&size); 
+   /* Call MPI routines like MPI_Send, MPI_Recv, ... 
+   */ ... /* 
+   Shutdown MPI library */ 
+    MPI_Finalize();
+ 
+ printf("-procMPITest()\n");
+//#endif
+} // procMPITest
