@@ -549,7 +549,7 @@ void procMPITest (void)
    //MPI_Comm_rank(MPI_COMM_WORLD,&rank); 
    //MPI_Comm_size(MPI_COMM_WORLD,&size); 
    /* Call MPI routines like MPI_Send, MPI_Recv, ... 
-   //*/ ... /* 
+   //*/  /* 
    Shutdown MPI library */ 
     //MPI_Finalize();
  
