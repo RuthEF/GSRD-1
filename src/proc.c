@@ -278,8 +278,8 @@ void procB
    const size_t o1a= pD[1].upd.o, o1n= pD[1].upd.n;
    const size_t o1b= i1a + pO->stride[2];
 
-   def =acc_get_device_num(acc_device_default);
-   acc_set_device_num( def, acc_device_default );
+   acc_set_device_num( pDSMN->dev.n, pDSMN->dev.c ); 
+   //acc_set_device_num( def, acc_device_default );
    /*pragma acc data present_or_create( pTR[ i0a:i0n ], pTR[ i1a:i1n ], pTR[ i0b:i0n ], pTR[ i1b:i1n ] ) \
                copyin( pSR[ i0a:i0n ], pSR[ i1a:i1n ], pSR[ i0b:i0n ], pSR[ i1b:i1n ] ) \
                copyout( pTR[ o0a:o0n ], pTR[ o1a:o1n ], pTR[ o0b:o0n ], pTR[ o1b:o1n ] ) \
