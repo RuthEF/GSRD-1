@@ -239,8 +239,7 @@ INLINE void procAXYDS
    const DomSub d[2]
 )
 {
-//present( pR[d[0].in.o:d[0].in.n], pS[d[0].in.o:d[0].in.n], pR[d[1].in.o:d[1].in.n], pS[d[1].in.o:d[1].in.n] ) 
-   #pragma acc data present( pR[:pO->n], pS[:pO->n], pO[:1], pP[:1], d[:2] )
+//present( pR[d[0].in.o:d[0].in.n], pS[d[0].in.o:d[0].in.n], pR[d[1].in.o:d[1].in.n], pS[d[1].in.o:d[1].in.n] )    #pragma acc data present( pR[:pO->n], pS[:pO->n], pO[:1], pP[:1], d[:2] )
    {
       #pragma acc parallel loop
       for (U32 i= 0; i < 2; ++i )
@@ -286,7 +285,7 @@ void procB
                copyin( pO[:1], pP[:1], pD[:2] )
 */
    #pragma acc data present_or_create( pR[:pO->n] ) copy( pS[:pO->n] ) present_or_copyin( pO[:1], pP[:1], pD[:2] ) 
-   #pragma acc parallel async()
+   #pragma acc parallel async
    {
       //pragma acc parallel loop
       for (U32 i= 0; i < 2; ++i )
