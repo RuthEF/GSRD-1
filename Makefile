@@ -5,7 +5,7 @@ CC      = pgcc
 CCFLAGS = -c11 -Minfo=all
 ABFLAGS = -DACC
 # PGI Acceleration options - NB: Build for GTX1080 requires "cc60" to launch on GPU...
-ACCFLAGS = -Mmpi=mpich -fast -acc=verystrict -ta=multicore,tesla:cc60
+ACCFLAGS = -Mmpi=mp -fast -acc=verystrict -ta=multicore,tesla:cc60
 # -Mlarge_arrays # >2GB
 # Whereas INKCAP (GTX970M - "cc50") works with default...
 #ACCFLAGS = -mp -fast -acc=verystrict -ta=multicore,tesla
