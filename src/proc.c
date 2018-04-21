@@ -278,14 +278,15 @@ void procB
    const size_t o1a= pD[1].upd.o, o1n= pD[1].upd.n;
    const size_t o1b= i1a + pO->stride[2];
 
-   acc_set_device_num( pDSMN->dev.n, pDSMN->dev.c );
+   def =acc_get_device_num(acc_device_default);
+   acc_set_device_num( def, acc_device_default );
    /*pragma acc data present_or_create( pTR[ i0a:i0n ], pTR[ i1a:i1n ], pTR[ i0b:i0n ], pTR[ i1b:i1n ] ) \
                copyin( pSR[ i0a:i0n ], pSR[ i1a:i1n ], pSR[ i0b:i0n ], pSR[ i1b:i1n ] ) \
                copyout( pTR[ o0a:o0n ], pTR[ o1a:o1n ], pTR[ o0b:o0n ], pTR[ o1b:o1n ] ) \
                copyin( pO[:1], pP[:1], pD[:2] )
 */
    #pragma acc data present_or_create( pR[:pO->n] ) copy( pS[:pO->n] ) present_or_copyin( pO[:1], pP[:1], pD[:2] ) 
-   #pragma acc parallel async( pDSMN->dev.n )
+   #pragma acc parallel async()
    {
       //pragma acc parallel loop
       for (U32 i= 0; i < 2; ++i )
@@ -384,12 +385,12 @@ U32 hackMD
          for (U32 i= 0; i < nI; ++i )
          {
             //pragma omp parallel for
-            for (U32 j= 0; j < nD; ++j)
+            for (U32 j= 0; j < 1; ++j) //j<nD
             {
                procB(pTR, pSR, pO, &(pP->base), aD+j);
             }
             //pragma omp parallel for
-            for (U32 j= 0; j < nD; ++j)
+            for (U32 j= 0; j < 1; ++j) //j<nD
             {
                procB(pSR, pTR, pO, &(pP->base), aD+i);
             }
